@@ -65,6 +65,7 @@ export class BeckBrowser {
         return false;
     }
 
+
     public async init(): Promise<void> {
         if (this.browser) return;
 
@@ -169,6 +170,7 @@ export class BeckBrowser {
             throw error;
         }
     }
+
 
     public async fetchPage(url: string): Promise<string> {
         if (!this.page) await this.init();

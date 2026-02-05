@@ -2,119 +2,136 @@
 
 ## Introduction
 
-This document specifies the requirements for refactoring the German Legal MCP Server from a monolithic architecture to a modular, provider-based architecture. The refactoring enables clean separation of data sources (Beck Online, RIS, future providers) into self-contained modules while maintaining backward compatibility with existing functionality.
+This document specifies the requirements for refactoring the German Legal MCP Server from a monolithic architecture to a provider-based architecture. The refactor enables modular support for multiple legal data sources (Beck Online, RIS, future providers) while maintaining clean separation of concerns. Each provider will be self-contained with its own HTTP client/browser automation, HTML-to-Markdown converter, and tool definitions.
 
 ## Glossary
 
 - **Provider**: A self-contained module that implements access to a specific legal data source (e.g., Beck Online, RIS)
-- **MCP_Server**: The Model Context Protocol server that orchestrates tool registration and request handling
-- **Tool**: An MCP-exposed function that clients can invoke (e.g., `beck:search`, `beck:get_document`)
-- **Tool_Definition**: The schema and metadata describing a tool's name, description, and input parameters
-- **Tool_Handler**: The function that executes when a tool is invoked
-- **Orchestrator**: The thin `index.ts` module that aggregates and registers tools from all providers
-- **vpath**: Beck Online's unique document identifier path
+- **Provider_Interface**: The contract that all providers must implement to integrate with the MCP server
+- **Tool_Definition**: A schema describing an MCP tool's name, description, and input parameters
+- **Tool_Handler**: A function that executes the logic for a specific MCP tool
+- **MCP_Server**: The Model Context Protocol server that orchestrates providers and handles client requests
+- **Orchestrator**: The thin index.ts module that registers providers and routes tool calls
+- **Browser_Client**: Puppeteer-based automation for providers requiring JavaScript execution (Beck)
+- **HTTP_Client**: Axios-based client for providers with simple REST APIs (RIS)
 
 ## Requirements
 
 ### Requirement 1: Provider Interface Definition
 
-**User Story:** As a developer, I want a standardized Provider interface, so that all data sources implement a consistent contract for tool registration and lifecycle management.
+**User Story:** As a developer, I want a standardized Provider interface, so that all legal data source integrations follow a consistent contract.
 
 #### Acceptance Criteria
 
-1. THE Provider interface SHALL define a `name` property containing the provider's unique identifier string
-2. THE Provider interface SHALL define a `getToolDefinitions()` method that returns an array of tool definitions
-3. THE Provider interface SHALL define a `handleToolCall(name, args)` method that executes tool requests and returns results
-4. THE Provider interface SHALL define an `isConfigured()` method that returns a boolean indicating if the provider has required configuration
-5. THE Provider interface SHALL define a `cleanup()` method for releasing resources during shutdown
-6. WHEN a provider is not configured, THEN the `getToolDefinitions()` method SHALL return an empty array
+1. THE Provider_Interface SHALL define a `name` property that returns the provider's unique identifier string
+2. THE Provider_Interface SHALL define a `getTools()` method that returns an array of Tool_Definitions
+3. THE Provider_Interface SHALL define a `handleToolCall(toolName, args)` method that executes tool logic and returns a result
+4. THE Provider_Interface SHALL define an optional `initialize()` method for provider startup logic
+5. THE Provider_Interface SHALL define a `shutdown()` method for cleanup operations
+6. WHEN a provider is registered, THE Orchestrator SHALL call `initialize()` if defined
+7. WHEN the server shuts down, THE Orchestrator SHALL call `shutdown()` on all registered providers
 
-### Requirement 2: Beck Provider Module
+### Requirement 2: Shared Types Module
 
-**User Story:** As a developer, I want the existing Beck Online functionality encapsulated in a provider module, so that it follows the new architecture without changing external behavior.
-
-#### Acceptance Criteria
-
-1. THE Beck_Provider SHALL implement the Provider interface
-2. THE Beck_Provider SHALL expose all seven existing tools: `beck:search`, `beck:get_document`, `beck:get_legislation`, `beck:resolve_citation`, `beck:get_context`, `beck:get_suggestions`, `beck:get_referenced_documents`
-3. WHEN a Beck tool is invoked, THEN the Beck_Provider SHALL produce identical output to the current implementation
-4. THE Beck_Provider SHALL use the existing BeckBrowser singleton for browser automation
-5. THE Beck_Provider SHALL use the existing BeckConverter for HTML-to-Markdown conversion
-6. WHEN `isConfigured()` is called, THEN the Beck_Provider SHALL return true only if both `BECK_USERNAME` and `BECK_PASSWORD` environment variables are set and non-empty
-
-### Requirement 3: Thin Orchestrator
-
-**User Story:** As a developer, I want a thin orchestrator in `index.ts`, so that it only handles MCP server setup and delegates all tool logic to providers.
+**User Story:** As a developer, I want common types defined in a shared module, so that providers and the orchestrator use consistent type definitions.
 
 #### Acceptance Criteria
 
-1. THE Orchestrator SHALL import and instantiate all available providers
-2. WHEN the MCP server receives a `ListTools` request, THEN the Orchestrator SHALL aggregate tool definitions from all configured providers
-3. WHEN the MCP server receives a `CallTool` request, THEN the Orchestrator SHALL route the request to the appropriate provider based on tool name prefix
-4. THE Orchestrator SHALL handle graceful shutdown by calling `cleanup()` on all providers
-5. THE Orchestrator SHALL NOT contain any tool-specific business logic
-6. IF a tool call targets an unconfigured provider, THEN the Orchestrator SHALL return an error response with `isError: true`
+1. THE shared types module SHALL export a `ToolDefinition` type containing name, description, and inputSchema
+2. THE shared types module SHALL export a `ToolResult` type containing content array and optional isError flag
+3. THE shared types module SHALL export the `Provider` interface
+4. THE shared types module SHALL be located at `src/shared/types.ts`
+5. WHEN providers import types, THE imports SHALL reference the shared module path
 
-### Requirement 4: Shared Types Module
+### Requirement 3: Beck Provider Module
 
-**User Story:** As a developer, I want shared type definitions, so that providers and the orchestrator use consistent interfaces.
-
-#### Acceptance Criteria
-
-1. THE shared types module SHALL define a `ToolResult` interface with `content` array and optional `isError` boolean
-2. THE shared types module SHALL define a `ToolDefinition` interface matching MCP SDK requirements
-3. THE shared types module SHALL export the Provider interface for provider implementations
-4. WHEN a provider returns a result, THEN it SHALL conform to the `ToolResult` interface
-
-### Requirement 5: File Structure Organization
-
-**User Story:** As a developer, I want a clear directory structure, so that code is organized by responsibility and easy to navigate.
+**User Story:** As a developer, I want Beck Online functionality encapsulated in a provider module, so that it is self-contained and maintainable.
 
 #### Acceptance Criteria
 
-1. THE `src/providers/` directory SHALL contain provider implementations
-2. THE `src/providers/types.ts` file SHALL contain the Provider interface and common provider types
-3. THE `src/providers/beck/` directory SHALL contain all Beck-specific code
-4. THE `src/providers/beck/index.ts` file SHALL export the Beck provider instance
-5. THE `src/shared/` directory SHALL contain shared utilities and types
-6. THE `src/shared/types.ts` file SHALL contain ToolResult and other shared interfaces
-7. WHEN a new provider is added, THEN it SHALL be placed in `src/providers/{provider-name}/`
+1. THE Beck provider SHALL be located in `src/providers/beck/` directory
+2. THE Beck provider SHALL implement the Provider_Interface
+3. THE Beck provider SHALL contain a `browser.ts` module with Puppeteer automation logic
+4. THE Beck provider SHALL contain a `converter.ts` module with HTML-to-Markdown conversion logic
+5. THE Beck provider SHALL contain a `tools.ts` module with tool definitions and handlers
+6. THE Beck provider SHALL contain an `index.ts` module that exports the provider instance
+7. WHEN Beck credentials are not configured, THE Beck provider SHALL return an empty tools array from `getTools()`
+8. THE Beck provider SHALL preserve all existing tool functionality (search, get_document, get_legislation, resolve_citation, get_context, get_suggestions, get_referenced_documents)
 
-### Requirement 6: Backward Compatibility
+### Requirement 4: Thin Orchestrator
 
-**User Story:** As a user, I want all existing Beck tools to work identically after refactoring, so that my workflows are not disrupted.
-
-#### Acceptance Criteria
-
-1. WHEN `beck:search` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-2. WHEN `beck:get_document` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-3. WHEN `beck:get_legislation` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-4. WHEN `beck:resolve_citation` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-5. WHEN `beck:get_context` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-6. WHEN `beck:get_suggestions` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-7. WHEN `beck:get_referenced_documents` is called with identical parameters, THEN the response SHALL be identical to the pre-refactor implementation
-8. THE existing unit tests SHALL pass without modification
-9. THE existing integration tests SHALL pass without modification
-
-### Requirement 7: Provider Discovery and Registration
-
-**User Story:** As a developer, I want providers to be easily discoverable and registerable, so that adding new providers requires minimal orchestrator changes.
+**User Story:** As a developer, I want index.ts to be a thin orchestrator, so that provider logic is decoupled from server setup.
 
 #### Acceptance Criteria
 
-1. THE Orchestrator SHALL maintain a registry of available providers
-2. WHEN the server starts, THEN the Orchestrator SHALL check each provider's `isConfigured()` status
-3. WHEN listing tools, THEN the Orchestrator SHALL only include tools from configured providers
-4. THE provider registration mechanism SHALL support adding new providers with a single import statement
-5. IF a provider throws during initialization, THEN the Orchestrator SHALL log the error and continue with other providers
+1. THE Orchestrator SHALL import and register providers from the providers directory
+2. THE Orchestrator SHALL aggregate tool definitions from all registered providers
+3. WHEN a tool call is received, THE Orchestrator SHALL route it to the correct provider based on tool name prefix
+4. THE Orchestrator SHALL handle graceful shutdown by calling shutdown on all providers
+5. THE Orchestrator SHALL NOT contain provider-specific business logic
+6. THE Orchestrator SHALL set up the MCP server transport and connection
 
-### Requirement 8: Error Handling Consistency
+### Requirement 5: Tool Namespacing
 
-**User Story:** As a developer, I want consistent error handling across providers, so that clients receive predictable error responses.
+**User Story:** As a developer, I want tools namespaced by provider, so that tool names clearly indicate their source.
 
 #### Acceptance Criteria
 
-1. WHEN a tool handler throws an exception, THEN the provider SHALL return a ToolResult with `isError: true` and error message in content
-2. WHEN a provider is not configured and a tool is called, THEN the response SHALL include a descriptive error message
-3. WHEN access is denied to a Beck document, THEN the error response format SHALL remain unchanged
-4. THE error message format SHALL be consistent across all providers
+1. THE Beck provider tools SHALL be prefixed with `beck:` (e.g., `beck:search`, `beck:get_document`)
+2. WHEN routing tool calls, THE Orchestrator SHALL extract the provider prefix from the tool name
+3. IF a tool name has no recognized prefix, THEN THE Orchestrator SHALL return an error indicating unknown tool
+
+### Requirement 6: Provider Registration
+
+**User Story:** As a developer, I want a simple provider registration mechanism, so that adding new providers requires minimal orchestrator changes.
+
+#### Acceptance Criteria
+
+1. THE Orchestrator SHALL maintain an array of registered Provider instances
+2. WHEN listing tools, THE Orchestrator SHALL concatenate tools from all registered providers
+3. THE Orchestrator SHALL support registering multiple providers
+4. WHEN a provider's `getTools()` returns empty array, THE Orchestrator SHALL exclude that provider's tools from the listing
+
+### Requirement 7: RIS Provider Placeholder
+
+**User Story:** As a developer, I want a placeholder RIS provider module, so that the architecture supports future RIS integration.
+
+#### Acceptance Criteria
+
+1. THE RIS provider placeholder SHALL be located in `src/providers/ris/` directory
+2. THE RIS provider placeholder SHALL implement the Provider_Interface
+3. THE RIS provider placeholder SHALL return an empty tools array from `getTools()`
+4. THE RIS provider placeholder SHALL have a no-op `shutdown()` method
+
+### Requirement 8: Existing Functionality Preservation
+
+**User Story:** As a user, I want all existing Beck Online functionality to work after the refactor, so that the refactor does not break current capabilities.
+
+#### Acceptance Criteria
+
+1. WHEN searching Beck Online, THE Beck provider SHALL return search results in the same format as before
+2. WHEN fetching documents, THE Beck provider SHALL return Markdown content in the same format as before
+3. WHEN resolving citations, THE Beck provider SHALL return vpath and canonical URL as before
+4. WHEN credentials are missing, THE Beck provider tools SHALL be hidden from tool listing
+5. WHEN access is denied to a document, THE Beck provider SHALL return an error with isError flag
+6. THE Beck provider SHALL preserve session persistence to `~/.beck-online-mcp/cookies.json`
+
+### Requirement 9: Shared Utilities Module
+
+**User Story:** As a developer, I want shared utilities in a common module, so that providers can reuse common functionality.
+
+#### Acceptance Criteria
+
+1. THE shared utilities module SHALL be located at `src/shared/utils.ts`
+2. THE shared utilities module SHALL export utility functions that may be shared across providers
+3. IF no shared utilities are needed initially, THEN THE module SHALL export an empty object or placeholder
+
+### Requirement 10: Error Handling Consistency
+
+**User Story:** As a developer, I want consistent error handling across providers, so that errors are reported uniformly to MCP clients.
+
+#### Acceptance Criteria
+
+1. WHEN a provider tool encounters an error, THE tool handler SHALL return a ToolResult with `isError: true`
+2. WHEN a provider tool encounters an error, THE error message SHALL be included in the content array
+3. THE ToolResult type SHALL enforce the error response structure
