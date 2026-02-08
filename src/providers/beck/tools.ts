@@ -63,6 +63,13 @@ export const beckToolDefinitions: ToolDefinition[] = [
       vpath: z.string().describe('Unique document identifier path'),
     }),
   },
+  {
+    name: 'beck:get_related_content',
+    description: 'Get related content (commentaries, handbooks, case law, articles) for a Beck Online document. This extracts the "Siehe auch" (see also) sidebar which shows commentaries, handbooks, court decisions, and articles that reference the current norm. Essential for comprehensive legal research.',
+    inputSchema: z.object({
+      vpath: z.string().describe('Unique document identifier path (e.g. bibdata/ges/urhg/cont/urhg.p15.htm)'),
+    }),
+  },
 ];
 
 
@@ -316,6 +323,122 @@ async function handleGetSuggestions(
 }
 
 /**
+ * Interface for related content items
+ */
+export interface RelatedItem {
+  title: string;
+  vpath?: string;
+  searchUrl?: string;
+  count?: number;
+}
+
+/**
+ * Interface for the complete related content structure
+ */
+export interface RelatedContent {
+  documentTitle: string;
+  citedInNorms: RelatedItem[];
+  administrativeRegulations: RelatedItem[];
+  commentaries: RelatedItem[];
+  handbooks: RelatedItem[];
+  caseLaw: RelatedItem[];
+  articles: RelatedItem[];
+  other: RelatedItem[];
+}
+
+/**
+ * Parse the Verweiszettel (see also) sidebar content from HTML
+ * Exported for testing purposes
+ */
+export function parseRelatedContent(html: string): RelatedContent {
+  const $ = cheerio.load(html);
+
+  const result: RelatedContent = {
+    documentTitle: $('title').text().replace(' - beck-online', '').trim(),
+    citedInNorms: [],
+    administrativeRegulations: [],
+    commentaries: [],
+    handbooks: [],
+    caseLaw: [],
+    articles: [],
+    other: [],
+  };
+
+  // Helper to extract vpath from href
+  const extractVpath = (href: string | undefined): string | undefined => {
+    if (!href) return undefined;
+    try {
+      const urlObj = new URL('https://beck-online.beck.de' + href);
+      return urlObj.searchParams.get('vpath') || undefined;
+    } catch {
+      return undefined;
+    }
+  };
+
+  // Parse the Verweiszettel (reference slip) container
+  const verweisContainer = $('#verweisContainer');
+  
+  // Extract direct document links (commentaries, handbooks, etc.)
+  verweisContainer.find('li.documentLink').each((i, el) => {
+    const link = $(el).find('a');
+    const title = link.text().trim();
+    const href = link.attr('href');
+    const vpath = extractVpath(href);
+    const category = link.attr('linkcategory-data')?.toLowerCase() || '';
+    
+    if (title && (vpath || href)) {
+      const item: RelatedItem = { title };
+      if (vpath) item.vpath = vpath;
+      
+      if (category.includes('kommentar')) {
+        result.commentaries.push(item);
+      } else if (category.includes('handbuecher') || category.includes('handbuch')) {
+        result.handbooks.push(item);
+      } else if (category.includes('rechtsprechung') || category.includes('entscheidung')) {
+        result.caseLaw.push(item);
+      } else if (category.includes('aufsatz') || category.includes('aufsaetze') || category.includes('zeitschrift')) {
+        result.articles.push(item);
+      } else {
+        result.other.push(item);
+      }
+    }
+  });
+
+  // Extract search links (links to hitlists)
+  verweisContainer.find('li.searchlink').each((i, el) => {
+    const link = $(el).find('a').first();
+    const title = link.attr('title') || link.text().trim();
+    const href = link.attr('href');
+    const countEl = $(el).find('.verweiszettel-section-count a, .verweiszettel-section-count');
+    const countText = countEl.text().trim();
+    const count = parseInt(countText, 10) || undefined;
+    const category = link.attr('linkcategory-data')?.toLowerCase() || '';
+    
+    if (title && href) {
+      const item: RelatedItem = { title };
+      if (href.startsWith('/')) {
+        item.searchUrl = 'https://beck-online.beck.de' + href;
+      }
+      if (count) item.count = count;
+      
+      if (category.includes('zitiertinnormen') || title.toLowerCase().includes('zitiert in normen')) {
+        result.citedInNorms.push(item);
+      } else if (category.includes('verwaltung') || title.toLowerCase().includes('verwaltung')) {
+        result.administrativeRegulations.push(item);
+      } else if (category.includes('handbuecher') || category.includes('handbuch')) {
+        result.handbooks.push(item);
+      } else if (category.includes('rechtsprechung') || category.includes('entscheidung')) {
+        result.caseLaw.push(item);
+      } else if (category.includes('aufsatz') || category.includes('zeitschrift')) {
+        result.articles.push(item);
+      }
+    }
+  });
+
+  return result;
+}
+
+/**
  * Handle beck:get_referenced_documents tool call
  */
 async function handleGetReferencedDocuments(
@@ -341,6 +464,25 @@ async function handleGetReferencedDocuments(
   });
 
   return { content: [{ type: 'text', text: JSON.stringify(refs, null, 2) }] };
+}
+
+/**
+ * Handle beck:get_related_content tool call
+ * Extracts the "Verweiszettel" (see also) sidebar content from the document view
+ */
+async function handleGetRelatedContent(
+  args: Record<string, unknown>,
+  browser: BeckBrowser
+): Promise<ToolResult> {
+  const { vpath } = args as { vpath: string };
+  
+  // Fetch the regular document view (not print view) to get the sidebar
+  const url = `https://beck-online.beck.de/Dokument?vpath=${encodeURIComponent(vpath)}`;
+  const html = await browser.fetchPage(url);
+  
+  const result = parseRelatedContent(html);
+
+  return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
 }
 
 
@@ -382,6 +524,9 @@ export async function handleBeckToolCall(
 
       case 'beck:get_referenced_documents':
         return await handleGetReferencedDocuments(args, browser);
+
+      case 'beck:get_related_content':
+        return await handleGetRelatedContent(args, browser);
 
       default:
         return {

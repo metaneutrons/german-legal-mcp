@@ -34,6 +34,32 @@ export class BeckConverter {
             replacement: (content) => `\n${content} `
         });
 
+        // Handle Randnummern in court decisions (sidebar-inside with em.randnr)
+        this.turndown.addRule('randnummerInside', {
+            filter: (node) => node.nodeName === 'SPAN' && node.classList.contains('sidebar-inside'),
+            replacement: (content, node) => {
+                const element = node as HTMLElement;
+                const randnr = element.querySelector('.randnr, .randnr.rn-beck');
+                if (randnr) {
+                    return `\n\n**[Rn. ${randnr.textContent?.trim()}]** `;
+                }
+                return '';
+            }
+        });
+
+        // Handle Randnummern in commentaries (sidebar-outside with em.randnr)
+        this.turndown.addRule('randnummerOutside', {
+            filter: (node) => node.nodeName === 'SPAN' && node.classList.contains('sidebar-outside'),
+            replacement: (content, node) => {
+                const element = node as HTMLElement;
+                const randnr = element.querySelector('.randnr');
+                if (randnr) {
+                    return `\n\n**[Rn. ${randnr.textContent?.trim()}]** `;
+                }
+                return '';
+            }
+        });
+
         this.turndown.addRule('internalLinks', {
             filter: 'a',
             replacement: (content, node) => {
@@ -72,8 +98,18 @@ export class BeckConverter {
 
     public htmlToMarkdown(html: string): MarkdownResult {
         const $ = cheerio.load(html);
-        const title = $('h2.paragr').first().text().trim() || $('title').text().trim();
-        const contentContainer = $('#printcontent .dokcontent');
+        const title = $('h2.paragr').first().text().trim() || 
+                      $('h1').first().text().trim() ||
+                      $('title').text().trim();
+        
+        // Try different content containers (print view vs regular view)
+        let contentContainer = $('#printcontent .dokcontent');
+        if (!contentContainer.length) {
+            contentContainer = $('#dokcontent');
+        }
+        if (!contentContainer.length) {
+            contentContainer = $('.dokcontent');
+        }
         
         // Remove navigation, footer, and the title element itself (since we prepend it)
         contentContainer.find('.breadcrumb, .dk2, .vkstandfooter').remove();
@@ -84,9 +120,9 @@ export class BeckConverter {
         
         // Post-processing cleanup
         
-        // 1. Format Randnummern [123] -> **[123]**
+        // 1. Format Randnummern [123] -> **[Rn. 123]**
         // Matches [123] at start of line or after newlines
-        body = body.replace(/(^|\n)\[(\d+)\]/g, '$1**[$2]**');
+        body = body.replace(/(^|\n)\[(\d+)\]/g, '$1**[Rn. $2]**');
 
         // 2. Remove excessive newlines
         body = body.replace(/\n{3,}/g, '\n\n');

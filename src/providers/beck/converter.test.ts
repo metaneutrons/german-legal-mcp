@@ -84,7 +84,7 @@ describe('BeckConverter', () => {
       expect(result.body).toContain('**(1)**');
     });
 
-    it('formats Randnummern [123] as bold when not escaped', () => {
+    it('formats Randnummern [123] as bold with Rn. prefix', () => {
       // Note: Turndown escapes brackets in some contexts, so this tests the post-processing
       // The regex only matches unescaped [number] patterns at line start
       const html = `

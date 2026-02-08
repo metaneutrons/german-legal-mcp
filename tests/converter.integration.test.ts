@@ -62,4 +62,81 @@ describe('BeckConverter Integration', () => {
       expect(converter.isAccessDenied(html)).toBe(false);
     });
   });
+
+  describe('with court-decision.html (real-world fixture)', () => {
+    const html = readFileSync(join(fixturesDir, 'court-decision.html'), 'utf-8');
+
+    it('extracts the correct title', () => {
+      const result = converter.htmlToMarkdown(html);
+      expect(result.title).toBe('BeckRS 2023, 52213');
+    });
+
+    it('converts Randnummern correctly', () => {
+      const result = converter.htmlToMarkdown(html);
+      expect(result.body).toContain('**[Rn. 1]**');
+      expect(result.body).toContain('**[Rn. 2]**');
+      expect(result.body).toContain('**[Rn. 10]**');
+    });
+
+    it('preserves court decision structure', () => {
+      const result = converter.htmlToMarkdown(html);
+      // Should contain Tenor section
+      expect(result.body).toContain('Tenor');
+      // Should contain Tatbestand
+      expect(result.body).toContain('Tatbestand');
+    });
+
+    it('preserves legal citations', () => {
+      const result = converter.htmlToMarkdown(html);
+      expect(result.body).toContain('BGB');
+      expect(result.body).toContain('UrhG');
+    });
+
+    it('extracts navigation context', () => {
+      const context = converter.extractContext(html);
+      expect(context.breadcrumbs).toContain('Rechtsprechung');
+      expect(context.siblings.previous).toContain('beckrs.2023.52212');
+      expect(context.siblings.next).toContain('beckrs.2023.52214');
+    });
+
+    it('does not detect as access denied', () => {
+      expect(converter.isAccessDenied(html)).toBe(false);
+    });
+  });
+
+  describe('with commentary.html (real-world fixture)', () => {
+    const html = readFileSync(join(fixturesDir, 'commentary.html'), 'utf-8');
+
+    it('extracts the correct title', () => {
+      const result = converter.htmlToMarkdown(html);
+      // Commentary title from BeckOK
+      expect(result.title).toMatch(/UrhG|Urheberrecht/i);
+    });
+
+    it('converts Randnummern correctly', () => {
+      const result = converter.htmlToMarkdown(html);
+      expect(result.body).toContain('**[Rn. 21]**');
+      expect(result.body).toContain('**[Rn. 21a]**');
+      expect(result.body).toContain('**[Rn. 21b]**');
+    });
+
+    it('preserves commentary content', () => {
+      const result = converter.htmlToMarkdown(html);
+      // Should contain legal terminology
+      expect(result.body).toContain('Vortrags');
+      expect(result.body).toContain('Aufführungs');
+    });
+
+    it('extracts navigation context', () => {
+      const context = converter.extractContext(html);
+      expect(context.breadcrumbs).toContain('Kommentare');
+      expect(context.siblings.previous).toBeDefined();
+      expect(context.siblings.next).toBeDefined();
+    });
+
+    it('does not detect as access denied', () => {
+      expect(converter.isAccessDenied(html)).toBe(false);
+    });
+  });
+
 });
