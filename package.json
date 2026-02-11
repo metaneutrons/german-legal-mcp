@@ -19,7 +19,7 @@
     "law"
   ],
   "author": "",
-  "license": "ISC",
+  "license": "GPL-3.0",
   "type": "module",
   "lint-staged": {
     "*.ts": [
