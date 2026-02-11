@@ -1,7 +1,7 @@
 # German Legal MCP Server
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
 [![MCP](https://img.shields.io/badge/MCP-1.26-purple)](https://modelcontextprotocol.io/)
 
@@ -35,7 +35,7 @@ A Model Context Protocol (MCP) server for German legal research, providing unifi
 ## Installation
 
 ### Prerequisites
-- Node.js >= 18.0.0
+- Node.js >= 22.0.0 (LTS)
 - npm or yarn
 
 ### Setup
@@ -50,6 +50,20 @@ npm install
 
 # Build the project
 npm run build
+```
+
+### Quick Start with npx
+
+You can run the server directly without cloning:
+
+```bash
+npx german-legal-mcp
+```
+
+Set environment variables for Beck Online access:
+
+```bash
+BECK_USERNAME=your_username BECK_PASSWORD=your_password npx german-legal-mcp
 ```
 
 ## Configuration
@@ -72,6 +86,23 @@ Add to your MCP client config (e.g., `claude_desktop_config.json`):
 ```
 
 Beck credentials are optional — if not provided, `beck:*` tools are disabled but other sources remain available.
+
+### Alternative: Environment Variables
+
+Instead of config file, you can set environment variables:
+
+```bash
+export BECK_USERNAME="YourUsername"
+export BECK_PASSWORD="YourPassword"
+node /path/to/german-legal-mcp/dist/index.js
+```
+
+Or create a `.env` file in the project root:
+
+```env
+BECK_USERNAME=YourUsername
+BECK_PASSWORD=YourPassword
+```
 
 ## Tools
 

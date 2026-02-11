@@ -11,6 +11,9 @@
     "test:coverage": "vitest run --coverage",
     "prepare": "husky"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "keywords": [
     "mcp",
     "legal",
