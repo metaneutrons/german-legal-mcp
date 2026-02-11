@@ -70,6 +70,25 @@ BECK_USERNAME=your_username BECK_PASSWORD=your_password npx german-legal-mcp
 
 Add to your MCP client config (e.g., `claude_desktop_config.json`):
 
+### Using npx (recommended)
+
+```json
+{
+  "mcpServers": {
+    "german-legal": {
+      "command": "npx",
+      "args": ["-y", "german-legal-mcp"],
+      "env": {
+        "BECK_USERNAME": "YourUsername",
+        "BECK_PASSWORD": "YourPassword"
+      }
+    }
+  }
+}
+```
+
+### Using local installation
+
 ```json
 {
   "mcpServers": {
@@ -117,11 +136,14 @@ BECK_PASSWORD=YourPassword
 | `beck:get_referenced_documents` | List cited documents |
 | `beck:get_suggestions` | Autocomplete suggestions |
 
-## Usage Examples
+## Usage
 
-### Search for legal documents
-```typescript
-// Search for cases related to "Schadensersatz"
+Once configured, the MCP server provides tools that can be used by any MCP client (like Claude Desktop). The tools are automatically available in the client interface.
+
+### Example Tool Calls
+
+**Search for legal documents:**
+```json
 {
   "tool": "beck:search",
   "arguments": {
@@ -130,9 +152,8 @@ BECK_PASSWORD=YourPassword
 }
 ```
 
-### Get specific legislation
-```typescript
-// Retrieve BGB § 823
+**Get specific legislation:**
+```json
 {
   "tool": "beck:get_legislation",
   "arguments": {
@@ -141,9 +162,8 @@ BECK_PASSWORD=YourPassword
 }
 ```
 
-### Retrieve document content
-```typescript
-// Get full document as Markdown
+**Retrieve document content:**
+```json
 {
   "tool": "beck:get_document",
   "arguments": {
