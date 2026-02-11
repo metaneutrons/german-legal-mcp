@@ -1,17 +1,107 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Verweiszettel - beck-online</title>
+  <title>[UrhG] § 15 - beck-online</title>
 </head>
 <body>
-  <div id="verweiszettel">
-    <h2>Verweis</h2>
-    <p>Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat.</p>
-    <ul>
-      <li><a href="/ref1">§ 249 BGB</a></li>
-      <li><a href="/ref2">§ 280 BGB</a></li>
-      <li><a href="/ref3">§ 823 BGB</a></li>
-    </ul>
+  <div id="verweisContainer">
+    <div id="verweiszettel-top" class="verweiszettel">
+      <div class="bo-box bo-box-rechtespalte withoutJSOpenBox" id="viewVerweiszettel">
+        <div class="header row">
+          <div class="column">
+            <span><i class="icon icon-sticky-note" aria-hidden="true"></i>Siehe auch ...</span>
+          </div>
+        </div>
+        <div id="verweiszettel-content" class="content">
+          <ul class="content-list">
+            <!-- Commentaries Section -->
+            <li class="kommentar row foldable" data-unfolded="true">
+              <div class="column icons"><i class="icon-site-color icon-down-open trigger"></i></div>
+              <div class="column">
+                <a title="Kommentare" class="trigger" href="" linkCategory-data="Kommentar">Kommentare</a>
+              </div>
+              <div class="column count">
+                <div class="verweiszettel-section-count">3</div>
+              </div>
+            </li>
+            <li class="defaultlinks row kommentar foldable-target" data-unfolded="true">
+              <ul>
+                <li class="documentLink kommentar">
+                  <a href="/Dokument?vpath=bibdata%2Fkomm%2Fbeckokurhr_48%2Furhg%2Fcont%2Fbeckokurhr.urhg.p15.htm" 
+                     title="BeckOK Urheberrecht" 
+                     linkcategory-data="Kommentar">BeckOK Urheberrecht, 48. Edition</a>
+                </li>
+                <li class="documentLink kommentar">
+                  <a href="/Dokument?vpath=bibdata%2Fkomm%2Fdreierschulzekourhg_8%2Furhg%2Fcont%2Fdreierschulzekourhg.urhg.p15.htm" 
+                     title="Dreier/Schulze" 
+                     linkcategory-data="Kommentar">Dreier/Schulze, UrhG, 8. A. 2025</a>
+                </li>
+              </ul>
+            </li>
+
+            <!-- Handbooks Section -->
+            <li class="handbuecher row foldable" data-unfolded="true">
+              <div class="column icons"><i class="icon-site-color icon-down-open trigger"></i></div>
+              <div class="column">
+                <a title="Handbücher" class="trigger" href="" linkCategory-data="Handbuecher">Handbücher</a>
+              </div>
+              <div class="column count">
+                <div class="verweiszettel-section-count">2</div>
+              </div>
+            </li>
+            <li class="defaultlinks row handbuecher foldable-target" data-unfolded="true">
+              <ul>
+                <li class="documentLink handbuecher">
+                  <a href="/Dokument?vpath=bibdata%2Fhdb%2Frahb_1%2Fcont%2Frahb.p15.htm" 
+                     title="Rechtsanwaltshandbuch" 
+                     linkcategory-data="Handbuecher">Rechtsanwaltshandbuch Urheberrecht</a>
+                </li>
+              </ul>
+            </li>
+
+            <!-- Case Law Section -->
+            <li class="rechtsprechung row foldable" data-unfolded="true">
+              <div class="column icons"><i class="icon-site-color icon-down-open trigger"></i></div>
+              <div class="column">
+                <a title="Rechtsprechung" class="trigger" href="" linkCategory-data="Rechtsprechung">Rechtsprechung</a>
+              </div>
+              <div class="column count">
+                <div class="verweiszettel-section-count">5</div>
+              </div>
+            </li>
+            <li class="defaultlinks row rechtsprechung foldable-target" data-unfolded="true">
+              <ul>
+                <li class="documentLink rechtsprechung">
+                  <a href="/Dokument?vpath=bibdata%2Fents%2Fbghz%2F2023%2Fcont%2Fbghz.2023.123.htm" 
+                     title="BGH Urteil" 
+                     linkcategory-data="Rechtsprechung">BGH, Urteil vom 01.01.2023</a>
+                </li>
+              </ul>
+            </li>
+
+            <!-- Articles Section -->
+            <li class="aufsaetze row foldable" data-unfolded="true">
+              <div class="column icons"><i class="icon-site-color icon-down-open trigger"></i></div>
+              <div class="column">
+                <a title="Aufsätze" class="trigger" href="" linkCategory-data="Aufsaetze">Aufsätze</a>
+              </div>
+              <div class="column count">
+                <div class="verweiszettel-section-count">3</div>
+              </div>
+            </li>
+            <li class="defaultlinks row aufsaetze foldable-target" data-unfolded="true">
+              <ul>
+                <li class="documentLink aufsaetze">
+                  <a href="/Dokument?vpath=bibdata%2Fzeits%2Fnjw%2F2024%2Fcont%2Fnjw.2024.123.htm" 
+                     title="NJW Artikel" 
+                     linkcategory-data="Aufsaetze">NJW 2024, 123</a>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>
