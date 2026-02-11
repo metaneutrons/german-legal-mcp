@@ -317,7 +317,7 @@ async function handleGetSuggestions(
     const data = JSON.parse(rawJson);
     const suggestions = data.values ? data.values.map((v: { label: string }) => v.label) : [];
     return { content: [{ type: 'text', text: JSON.stringify(suggestions, null, 2) }] };
-  } catch (e) {
+  } catch (_e) {
     return { content: [{ type: 'text', text: 'Failed to parse suggestions JSON.' }], isError: true };
   }
 }

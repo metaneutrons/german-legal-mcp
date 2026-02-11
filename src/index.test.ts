@@ -199,7 +199,7 @@ describe('Orchestrator', () => {
             const provider = createMockProvider(
               name,
               [{ name: `${name}:action`, description: 'Test', inputSchema: z.object({}) }],
-              async (toolName) => {
+              async (_toolName) => {
                 callLog.push(name);
                 return { content: [{ type: 'text', text: `Called ${name}` }] };
               }

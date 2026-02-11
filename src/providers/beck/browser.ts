@@ -99,7 +99,8 @@ export class BeckBrowser {
                 }
                 console.error('[BeckBrowser] Session invalid, re-authenticating...');
                 this.isAuthenticated = false;
-            } catch (e) {
+            } catch (_e) {
+                // Session check failed
                 this.isAuthenticated = false;
             }
         }
@@ -136,7 +137,9 @@ export class BeckBrowser {
                     console.error('[BeckBrowser] Waiting for redirects...');
                     try {
                         await this.page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
-                    } catch (e) { }
+                    } catch (_e) { 
+                        // Ignore timeout
+                    }
                 }
 
                 if (this.page.url().includes('beck-online.beck.de')) {
@@ -186,7 +189,9 @@ export class BeckBrowser {
         
         try {
             await this.page.waitForSelector('.treffer-wrapper, .paragr, .satz', { timeout: 2000 });
-        } catch (e) { }
+        } catch (_e) { 
+            // Ignore timeout - page may not have these selectors
+        }
 
         return await this.page.content();
     }
