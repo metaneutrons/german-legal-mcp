@@ -1,5 +1,10 @@
 # German Legal MCP Server
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Node.js Version](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)](https://www.typescriptlang.org/)
+[![MCP](https://img.shields.io/badge/MCP-1.26-purple)](https://modelcontextprotocol.io/)
+
 A Model Context Protocol (MCP) server for German legal research, providing unified access to multiple legal databases.
 
 ## Supported Sources
@@ -29,8 +34,21 @@ A Model Context Protocol (MCP) server for German legal research, providing unifi
 
 ## Installation
 
+### Prerequisites
+- Node.js >= 18.0.0
+- npm or yarn
+
+### Setup
+
 ```bash
+# Clone the repository
+git clone https://github.com/yourusername/german-legal-mcp.git
+cd german-legal-mcp
+
+# Install dependencies
 npm install
+
+# Build the project
 npm run build
 ```
 
@@ -67,6 +85,41 @@ Beck credentials are optional — if not provided, `beck:*` tools are disabled b
 | `beck:get_context` | Get navigation context |
 | `beck:get_referenced_documents` | List cited documents |
 | `beck:get_suggestions` | Autocomplete suggestions |
+
+## Usage Examples
+
+### Search for legal documents
+```typescript
+// Search for cases related to "Schadensersatz"
+{
+  "tool": "beck:search",
+  "arguments": {
+    "query": "Schadensersatz § 823 BGB"
+  }
+}
+```
+
+### Get specific legislation
+```typescript
+// Retrieve BGB § 823
+{
+  "tool": "beck:get_legislation",
+  "arguments": {
+    "citation": "BGB § 823"
+  }
+}
+```
+
+### Retrieve document content
+```typescript
+// Get full document as Markdown
+{
+  "tool": "beck:get_document",
+  "arguments": {
+    "url": "https://beck-online.beck.de/Dokument?vpath=..."
+  }
+}
+```
 
 ## Development
 
@@ -111,4 +164,4 @@ A release PR is created automatically and merged when ready.
 
 ## License
 
-ISC
+GPL-3.0 - See [LICENSE](LICENSE) for details.
