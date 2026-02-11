@@ -41,3 +41,6 @@ debug_type.ts
 
 # Test coverage
 coverage/
+
+# Test fixtures backup (contains copyrighted content)
+tests/fixtures.backup/
