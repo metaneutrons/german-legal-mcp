@@ -200,15 +200,6 @@ docs: update README
 
 **Scopes:** `beck`, `gii`, `rii`, `core`, `deps`, `config`
 
-### Releases
-
-Releases are automated via [release-please](https://github.com/googleapis/release-please). On merge to `main`:
-- `feat:` commits → minor version bump
-- `fix:` commits → patch version bump
-- `feat!:` or `BREAKING CHANGE:` → major version bump
-
-A release PR is created automatically and merged when ready.
-
 ## Architecture
 
 - **Puppeteer** for browser automation (handles OIDC auth, fingerprinting)
