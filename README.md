@@ -15,6 +15,7 @@ A Model Context Protocol (MCP) server for German legal research, providing unifi
 | Source | Status | Prefix | Authentication |
 |--------|--------|--------|----------------|
 | [Beck Online](https://beck-online.beck.de) | ✅ Available | `beck:` | Required (subscription) |
+| [Rechtsinformationen Bund](http://testphase.rechtsinformationen.bund.de) | 🚧 Planned | `ris:` | None (public) |
 | [Gesetze im Internet](https://www.gesetze-im-internet.de) | 🚧 Planned | `gii:` | None (public) |
 | [Rechtsprechung im Internet](https://www.rechtsprechung-im-internet.de) | 🚧 Planned | `rii:` | None (public) |
 
@@ -26,6 +27,11 @@ A Model Context Protocol (MCP) server for German legal research, providing unifi
 - Direct legislation lookup (e.g., "BGB § 823")
 - Citation resolution and autocomplete
 - Document context and navigation
+
+### Rechtsinformationen Bund (planned)
+- Unified access to federal legal information
+- Laws, court decisions, and administrative regulations
+- Free, no authentication required
 
 ### Gesetze im Internet (planned)
 - Access to all federal German laws
