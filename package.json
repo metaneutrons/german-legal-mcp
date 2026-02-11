@@ -13,12 +13,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/german-legal-mcp.git"
+    "url": "git+https://github.com/metaneutrons/german-legal-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/german-legal-mcp/issues"
+    "url": "https://github.com/metaneutrons/german-legal-mcp/issues"
   },
-  "homepage": "https://github.com/yourusername/german-legal-mcp#readme",
+  "homepage": "https://github.com/metaneutrons/german-legal-mcp#readme",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

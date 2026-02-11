@@ -42,7 +42,7 @@ A Model Context Protocol (MCP) server for German legal research, providing unifi
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/german-legal-mcp.git
+git clone https://github.com/metaneutrons/german-legal-mcp.git
 cd german-legal-mcp
 
 # Install dependencies
