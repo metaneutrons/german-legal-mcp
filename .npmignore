@@ -1,0 +1,26 @@
+# Dev files
+.github/
+.husky/
+.kiro/
+.vscode/
+.editorconfig
+.gitattributes
+.gitignore
+.env
+.env.*
+.release-please-manifest.json
+release-please-config.json
+commitlint.config.js
+
+# Source files
+src/
+tests/
+docs/
+vitest.config.ts
+tsconfig.json
+
+# Generated
+node_modules/
+coverage/
+*.log
+*.tsbuildinfo
