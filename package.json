@@ -82,7 +82,7 @@
     "@types/turndown": "^5.0.6",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/eslint-plugin": "^8.55.0",
-    "@typescript-eslint/parser": "^8.55.0",
+    "@typescript-eslint/parser": "^8.56.1",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.2",
     "fast-check": "^4.5.3",
