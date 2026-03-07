@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Used by providers to declare their available tools.
  */
 export interface ToolDefinition {
-  /** Unique tool identifier with provider prefix (e.g., 'beck:search') */
+  /** Unique tool identifier with provider prefix (e.g., 'gii:get_legislation') */
   name: string;
   /** Human-readable description for MCP clients */
   description: string;
@@ -40,7 +40,7 @@ export interface Provider {
 
   /**
    * Handles a tool call. toolName includes the provider prefix.
-   * @param toolName - Full tool name including prefix (e.g., 'beck:search')
+   * @param toolName - Full tool name including prefix (e.g., 'gii:get_legislation')
    * @param args - Tool arguments as key-value pairs
    * @returns Promise resolving to the tool result
    */

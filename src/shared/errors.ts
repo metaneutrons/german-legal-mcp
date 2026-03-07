@@ -64,7 +64,7 @@ export class NetworkError extends RecoverableError {
 export class AuthenticationError extends PermanentError {
   readonly code: string = 'AUTHENTICATION_FAILED';
   readonly userMessage: string = 'Authentication failed. Check your credentials.';
-  readonly recoveryHint: string = 'Verify BECK_USERNAME and BECK_PASSWORD are correct.';
+  readonly recoveryHint: string = 'Verify credentials are correct.';
 }
 
 export class ValidationError extends PermanentError {

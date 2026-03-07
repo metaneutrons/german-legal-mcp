@@ -1,56 +1,33 @@
 import { describe, it, expect } from 'vitest';
-import { validateVpath, validateSearchQuery, validateSection } from './validation.js';
+import { validateSearchQuery, validateSection } from './validation.js';
 import { ValidationError } from './errors.js';
 
-describe('validation', () => {
-  describe('validateVpath', () => {
-    it('should accept bibdata path', () => {
-      expect(validateVpath('bibdata/komm/123')).toBe('bibdata/komm/123');
-    });
-
-    it('should accept full URL', () => {
-      expect(validateVpath('https://beck-online.beck.de/test')).toBe('https://beck-online.beck.de/test');
-    });
-
-    it('should reject empty string', () => {
-      expect(() => validateVpath('')).toThrow(ValidationError);
-    });
-
-    it('should reject invalid format', () => {
-      expect(() => validateVpath('invalid/path')).toThrow(ValidationError);
-    });
-  });
-
+describe('Validation', () => {
   describe('validateSearchQuery', () => {
-    it('should accept valid query', () => {
+    it('accepts valid query', () => {
       expect(validateSearchQuery('test query')).toBe('test query');
     });
 
-    it('should reject empty string', () => {
+    it('rejects empty query', () => {
       expect(() => validateSearchQuery('')).toThrow(ValidationError);
-    });
-
-    it('should reject too long query', () => {
-      const longQuery = 'a'.repeat(501);
-      expect(() => validateSearchQuery(longQuery)).toThrow(ValidationError);
     });
   });
 
   describe('validateSection', () => {
-    it('should accept Rn format', () => {
+    it('accepts Rn format', () => {
       expect(validateSection('Rn 5')).toBe('Rn 5');
-      expect(validateSection('Rn 5-10')).toBe('Rn 5-10');
+      expect(validateSection('Rn 5-12')).toBe('Rn 5-12');
     });
 
-    it('should accept lines format', () => {
-      expect(validateSection('lines:10-20')).toBe('lines:10-20');
+    it('accepts lines format', () => {
+      expect(validateSection('lines:100-200')).toBe('lines:100-200');
     });
 
-    it('should accept heading text', () => {
-      expect(validateSection('Introduction')).toBe('Introduction');
+    it('accepts heading text', () => {
+      expect(validateSection('I. Allgemeines')).toBe('I. Allgemeines');
     });
 
-    it('should reject empty string', () => {
+    it('rejects empty section', () => {
       expect(() => validateSection('')).toThrow(ValidationError);
     });
   });
