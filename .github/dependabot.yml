@@ -1,53 +1,22 @@
-# Dependabot configuration
-# - npm version updates target `develop` (the default branch) explicitly.
-# - Routine minor/patch bumps are GROUPED so a single PR carries the whole
-#   package-lock.json change. This kills the merge-cascade: there is no longer
-#   one PR per package all editing the same lockfile and re-conflicting on merge.
-# - Production and development deps are split into two groups so a dev-tooling
-#   bump can never block a security-relevant prod bump (and vice versa).
-# - Major bumps are intentionally NOT grouped: each lands in its own PR for
-#   manual review and is never eligible for auto-merge.
-# - SHA-pinned GitHub Actions are also kept current via a second ecosystem entry.
+# Canonical Dependabot policy for the public mirror. This file is applied to
+# the public repository through a separately reviewed governance change; the
+# source sync verifies it byte-for-byte and never mutates public `.github/`.
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
-    target-branch: "develop"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "06:00"
-      timezone: "Europe/Berlin"
-    open-pull-requests-limit: 5
-    versioning-strategy: "increase"
-    labels:
-      - "dependencies"
-    commit-message:
-      prefix: "chore(deps)"
-      prefix-development: "chore(dev-deps)"
-      include: "scope"
-    groups:
-      prod-minor-patch:
-        applies-to: version-updates
-        dependency-type: "production"
-        update-types:
-          - "minor"
-          - "patch"
-      dev-minor-patch:
-        applies-to: version-updates
-        dependency-type: "development"
-        update-types:
-          - "minor"
-          - "patch"
-
+  # package.json and package-lock.json are generated from the private source
+  # SSOT. Public npm update PRs would edit generated outputs and be overwritten
+  # by the next reviewed sync, so only public-owned workflow dependencies live
+  # here.
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "develop"
+    target-branch: "main"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
