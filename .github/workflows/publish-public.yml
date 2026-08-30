@@ -241,7 +241,7 @@ jobs:
             release-artifacts/provenance.intoto.jsonl \
             release-artifacts/SHA256SUMS
 
-          npm publish "release-artifacts/$NPM_TARBALL" \
+          npm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
             --ignore-scripts \
             --access public \
             --provenance \
