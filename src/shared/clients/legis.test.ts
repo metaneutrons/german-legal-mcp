@@ -8,9 +8,13 @@ vi.mock('axios', () => ({
   },
 }));
 
-vi.mock('fs/promises', () => ({
-  writeFile: vi.fn().mockResolvedValue(undefined),
-  mkdir: vi.fn().mockResolvedValue(undefined),
+vi.mock('../save-to-file.js', () => ({
+  saveToFile: vi.fn(async (path: string, content: string, meta?: string) => ({
+    content: [{
+      type: 'text',
+      text: `Saved to ${path} (${content.length} chars)${meta ? `\n\n${meta}` : ''}`,
+    }],
+  })),
 }));
 
 import axios from 'axios';
@@ -252,24 +256,24 @@ describe('LegisProvider', () => {
   it('should register four tools', async () => {
     const provider = await getProvider();
     const tools = provider.getTools();
-    expect(tools.map((t: any) => t.name)).toEqual(['legis:search', 'legis:get', 'legis:toc', 'legis:states']);
+    expect(tools.map((t: any) => t.name)).toEqual(['legis_search', 'legis_get', 'legis_toc', 'legis_states']);
   });
 
   it('should return error for unknown tool', async () => {
     const provider = await getProvider();
-    const result = await provider.handleToolCall('legis:unknown', {});
+    const result = await provider.handleToolCall('legis_unknown', {});
     expect(result.isError).toBe(true);
   });
 
-  it('should handle legis:states', async () => {
+  it('should handle legis_states', async () => {
     const provider = await getProvider();
-    const result = await provider.handleToolCall('legis:states', {});
+    const result = await provider.handleToolCall('legis_states', {});
     expect(result.content[0].text).toContain('BUND');
     expect(result.content[0].text).toContain('BW');
     expect(result.content[0].text).toContain('Available');
   });
 
-  it('should handle legis:get for BUND', async () => {
+  it('should handle legis_get for BUND', async () => {
     const provider = await getProvider();
     mockGet.mockResolvedValueOnce({
       data: Buffer.from(
@@ -282,19 +286,19 @@ describe('LegisProvider', () => {
       ),
     } as any);
 
-    const result = await provider.handleToolCall('legis:get', { id: 'bgb/1', state: 'BUND' });
+    const result = await provider.handleToolCall('legis_get', { id: 'bgb/1', state: 'BUND' });
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toContain('vorsätzlich');
   });
 
   it('should reject BUND search', async () => {
     const provider = await getProvider();
-    await expect(provider.handleToolCall('legis:search', { query: 'test', state: 'BUND' })).rejects.toThrow('does not support search');
+    await expect(provider.handleToolCall('legis_search', { query: 'test', state: 'BUND' })).rejects.toThrow('does not support search');
   });
 
   it('should reject invalid BUND id format', async () => {
     const provider = await getProvider();
-    await expect(provider.handleToolCall('legis:get', { id: 'bgb823', state: 'BUND' })).rejects.toThrow('law/section');
+    await expect(provider.handleToolCall('legis_get', { id: 'bgb823', state: 'BUND' })).rejects.toThrow('law/section');
   });
 
   it('should handle NI search', async () => {
@@ -303,7 +307,7 @@ describe('LegisProvider', () => {
       data: '<html><h3><a href="/browse/document/abc-123">§ 1 NPOG</a></h3></html>',
     } as any);
 
-    const result = await provider.handleToolCall('legis:search', { query: 'NPOG', state: 'NI', limit: 3 });
+    const result = await provider.handleToolCall('legis_search', { query: 'NPOG', state: 'NI', limit: 3 });
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toContain('§ 1 NPOG');
     expect(result.content[0].text).toContain('abc-123');
@@ -315,14 +319,14 @@ describe('LegisProvider', () => {
       data: '<html><title>§ 1 NPOG | NI-VORIS</title><div class="wkde-document-body"><p>Aufgaben der Polizei</p></div></html>',
     } as any);
 
-    const result = await provider.handleToolCall('legis:get', { id: 'abc-123', state: 'NI' });
+    const result = await provider.handleToolCall('legis_get', { id: 'abc-123', state: 'NI' });
     expect(result.isError).toBeUndefined();
     expect(result.content[0].text).toContain('Aufgaben der Polizei');
   });
 
   it('should reject unsupported state', async () => {
     const provider = await getProvider();
-    await expect(provider.handleToolCall('legis:get', { id: 'test', state: 'XX' })).rejects.toThrow('not yet supported');
+    await expect(provider.handleToolCall('legis_get', { id: 'test', state: 'XX' })).rejects.toThrow('not yet supported');
   });
 
   it('should save to file with save_path', async () => {
@@ -336,7 +340,7 @@ describe('LegisProvider', () => {
       ),
     } as any);
 
-    const result = await provider.handleToolCall('legis:get', {
+    const result = await provider.handleToolCall('legis_get', {
       id: 'gg/Art. 1', state: 'BUND', save_path: '/tmp/test.md',
     });
     expect(result.content[0].text).toContain('Saved to /tmp/test.md');

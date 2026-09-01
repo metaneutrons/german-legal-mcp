@@ -74,9 +74,13 @@ vi.mock('axios', () => ({
   },
 }));
 
-vi.mock('fs/promises', () => ({
-  writeFile: vi.fn().mockResolvedValue(undefined),
-  mkdir: vi.fn().mockResolvedValue(undefined),
+vi.mock('../../shared/save-to-file.js', () => ({
+  saveToFile: vi.fn(async (path: string, content: string, meta?: string) => ({
+    content: [{
+      type: 'text',
+      text: `Saved to ${path} (${content.length} chars)${meta ? `\n\n${meta}` : ''}`,
+    }],
+  })),
 }));
 
 import axios from 'axios';
@@ -94,15 +98,15 @@ describe('EulProvider', () => {
   it('should return two tools', () => {
     const tools = eulProvider.getTools();
     expect(tools).toHaveLength(2);
-    expect(tools.map((t: any) => t.name)).toEqual(['eul:search', 'eul:get_document']);
+    expect(tools.map((t: any) => t.name)).toEqual(['eul_search', 'eul_get_document']);
   });
 
   it('should return error for unknown tool', async () => {
-    const result = await eulProvider.handleToolCall('eul:unknown', {});
+    const result = await eulProvider.handleToolCall('eul_unknown', {});
     expect(result.isError).toBe(true);
   });
 
-  describe('eul:search', () => {
+  describe('eul_search', () => {
     it('should format SPARQL results', async () => {
       mockGet.mockResolvedValueOnce({
         data: {
@@ -115,7 +119,7 @@ describe('EulProvider', () => {
         },
       } as any);
 
-      const result = await eulProvider.handleToolCall('eul:search', { query: 'Urheberrecht' });
+      const result = await eulProvider.handleToolCall('eul_search', { query: 'Urheberrecht' });
       expect(result.isError).toBeUndefined();
       expect(result.content[0].text).toContain('32001L0029');
       expect(result.content[0].text).toContain('Found 1 results');
@@ -123,16 +127,16 @@ describe('EulProvider', () => {
 
     it('should handle search errors', async () => {
       mockGet.mockRejectedValueOnce(new Error('SPARQL timeout'));
-      await expect(eulProvider.handleToolCall('eul:search', { query: 'test' })).rejects.toThrow('SPARQL timeout');
+      await expect(eulProvider.handleToolCall('eul_search', { query: 'test' })).rejects.toThrow('SPARQL timeout');
     });
   });
 
-  describe('eul:get_document', () => {
+  describe('eul_get_document', () => {
     it('should convert real InfoSoc fixture', async () => {
       const html = readFileSync(join(fixturesDir, 'elu-32001L0029.html'), 'utf-8');
       mockGet.mockResolvedValueOnce({ data: html } as any);
 
-      const result = await eulProvider.handleToolCall('eul:get_document', { celex: '32001L0029' });
+      const result = await eulProvider.handleToolCall('eul_get_document', { celex: '32001L0029' });
       expect(result.isError).toBeUndefined();
       expect(result.content[0].text).toContain('Urheberrecht');
       expect(result.content[0].text).toContain('Artikel 1');
@@ -142,7 +146,7 @@ describe('EulProvider', () => {
       const html = readFileSync(join(fixturesDir, 'elu-12016E267.html'), 'utf-8');
       mockGet.mockResolvedValueOnce({ data: html } as any);
 
-      const result = await eulProvider.handleToolCall('eul:get_document', { celex: '12016E267' });
+      const result = await eulProvider.handleToolCall('eul_get_document', { celex: '12016E267' });
       expect(result.isError).toBeUndefined();
       expect(result.content[0].text).toContain('Vorabentscheidung');
     });
@@ -150,7 +154,7 @@ describe('EulProvider', () => {
     it('should extract section by line range', async () => {
       mockGet.mockResolvedValueOnce({ data: '<p>Dies ist die erste Zeile mit ausreichend Inhalt für die Validierung.</p><p>Dies ist die zweite Zeile mit weiterem Inhalt.</p>' } as any);
 
-      const result = await eulProvider.handleToolCall('eul:get_document', {
+      const result = await eulProvider.handleToolCall('eul_get_document', {
         celex: '32001L0029', section: 'lines:1-1',
       });
       expect(result.isError).toBeUndefined();
@@ -159,7 +163,7 @@ describe('EulProvider', () => {
     it('should return error for non-existent section', async () => {
       mockGet.mockResolvedValueOnce({ data: '<p>Dies ist ein einfacher Testtext mit ausreichend Zeichen für die Validierung.</p>' } as any);
 
-      const result = await eulProvider.handleToolCall('eul:get_document', {
+      const result = await eulProvider.handleToolCall('eul_get_document', {
         celex: '32001L0029', section: 'Art. 999',
       });
       expect(result.isError).toBe(true);
@@ -169,7 +173,7 @@ describe('EulProvider', () => {
     it('should save to file with save_path', async () => {
       mockGet.mockResolvedValueOnce({ data: '<p>Dies ist ein Testinhalt mit ausreichend Zeichen für die Validierung.</p>' } as any);
 
-      const result = await eulProvider.handleToolCall('eul:get_document', {
+      const result = await eulProvider.handleToolCall('eul_get_document', {
         celex: '32001L0029', save_path: '/tmp/test.md',
       });
       expect(result.content[0].text).toContain('Saved to /tmp/test.md');
@@ -178,7 +182,7 @@ describe('EulProvider', () => {
 
     it('should handle fetch errors', async () => {
       mockGet.mockRejectedValueOnce(new Error('404 Not Found'));
-      await expect(eulProvider.handleToolCall('eul:get_document', { celex: 'INVALID' })).rejects.toThrow('404');
+      await expect(eulProvider.handleToolCall('eul_get_document', { celex: '32000R0001' })).rejects.toThrow('404');
     });
   });
 });

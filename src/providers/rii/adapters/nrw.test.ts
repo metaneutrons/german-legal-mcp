@@ -12,7 +12,11 @@ describe('NRWDecisionAdapter', () => {
       get: vi.fn(async () => ({ data: html })),
     };
     const adapter = new NRWDecisionAdapter(http);
-    await expect(adapter.search('NW', 'VwVfG', 1)).resolves.toMatchObject([{ fileNumber: '8 K 3077/09', court: 'Verwaltungsgericht Arnsberg' }]);
+    await expect(adapter.search('NW', 'VwVfG', 1)).resolves.toMatchObject([{
+      fileNumber: '8 K 3077/09',
+      court: 'Verwaltungsgericht Arnsberg',
+      ecli: 'ECLI:DE:VGAR:2010:1214.8K3077.09.00',
+    }]);
     await expect(adapter.get('NW', 'https://nrwe.justiz.nrw.de/example.html')).resolves.toMatchObject({ court: 'Verwaltungsgericht Arnsberg', ecli: 'ECLI:DE:VGAR:2010:1214.8K3077.09.00', content: expect.stringContaining('Die Klage wird abgewiesen.') });
   });
 });

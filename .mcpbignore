@@ -9,27 +9,59 @@
 /.vscode/
 /.kiro/
 /scripts/
+/services/
+/tests/
 /coverage/
 /docs/
 /tsconfig*.json
 /vitest.config.ts
+/vitest.state.ts
 /eslint.config.js
 /commitlint.config.js
 /.markdownlint.json
+/.gitignore
+/.mcpbignore
+/.npmignore
+/.public-export.json
 /.editorconfig
 /.gitattributes
 /Dockerfile
+/CHANGELOG.md
+/INSTALL-PRIVATE.md
+/SECURITY.md
+/blueprint.md
+/eslint.config.mjs
+/vitest.config.public.ts
+/vitest.live.config.ts
 
 # --- Dependency non-runtime files only (docs + type declarations + source maps) ---
 # (mcpb pack already drops *.map and lockfiles by default; listed here for clarity.)
 node_modules/**/*.md
 node_modules/**/*.markdown
 node_modules/**/*.d.ts
+node_modules/**/*.d.cts
+node_modules/**/*.d.mts
 node_modules/**/*.map
+node_modules/.package-lock.json
 node_modules/**/docs/
 node_modules/**/.github/
 node_modules/**/example/
 node_modules/**/examples/
+node_modules/**/test/
+node_modules/**/tests/
+node_modules/**/__tests__/
+node_modules/**/fixture/
+node_modules/**/fixtures/
+node_modules/**/benchmark/
+node_modules/**/benchmarks/
+node_modules/**/*.test.js
+node_modules/**/*.test.cjs
+node_modules/**/*.test.mjs
+node_modules/**/*.test.ts
+node_modules/**/*.spec.js
+node_modules/**/*.spec.cjs
+node_modules/**/*.spec.mjs
+node_modules/**/*.spec.ts
 
 # --- Lockfiles (npm; also excluded by mcpb pack defaults) ---
 /package-lock.json

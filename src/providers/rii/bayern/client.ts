@@ -1,5 +1,7 @@
 import axios from 'axios';
 import { load } from 'cheerio';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { RII_BAYERN_POLICY } from '../network-policy.js';
 
 const BASE_URL = 'https://www.gesetze-bayern.de';
 
@@ -12,7 +14,7 @@ let session: BayernSession | null = null;
 
 async function getSession(): Promise<BayernSession> {
   if (session) return session;
-  const res = await axios.get<string>(BASE_URL, { timeout: 15000 });
+  const res = await safeAxiosGet<string>(axios, BASE_URL, RII_BAYERN_POLICY, { timeout: 15000 });
   const cookies = (res.headers['set-cookie'] || []).map((c: string) => c.split(';')[0]).join('; ');
   const $ = load(res.data);
   const token = $('input[name="__RequestVerificationToken"]').val() as string;
@@ -39,10 +41,10 @@ export async function searchBayern(query: string, limit: number, page = 1): Prom
   // Page one is the POST result; later pages are GETs against the retained
   // search, which is how the site's own pager works.
   const res = page > 1
-    ? await axios.get<string>(`${BASE_URL}/Search/Page/${page}`, {
+    ? await safeAxiosGet<string>(axios, `${BASE_URL}/Search/Page/${page}`, RII_BAYERN_POLICY, {
       headers: { Cookie: s.cookies }, timeout: 15000,
     })
-    : await axios.post<string>(`${BASE_URL}/Search`, `__RequestVerificationToken=${encodeURIComponent(s.token)}&SearchFields.Content=${encodeURIComponent(query)}`, {
+    : await safeAxiosPost<string>(axios, `${BASE_URL}/Search`, `__RequestVerificationToken=${encodeURIComponent(s.token)}&SearchFields.Content=${encodeURIComponent(query)}`, RII_BAYERN_POLICY, {
       headers: { Cookie: s.cookies, 'Content-Type': 'application/x-www-form-urlencoded' },
       timeout: 15000,
     });
@@ -65,6 +67,6 @@ export async function searchBayern(query: string, limit: number, page = 1): Prom
 }
 
 export async function fetchBayernDecision(docId: string): Promise<string> {
-  const res = await axios.get<string>(`${BASE_URL}/Content/Document/${docId}`, { timeout: 15000 });
+  const res = await safeAxiosGet<string>(axios, `${BASE_URL}/Content/Document/${docId}`, RII_BAYERN_POLICY, { timeout: 15000 });
   return res.data;
 }

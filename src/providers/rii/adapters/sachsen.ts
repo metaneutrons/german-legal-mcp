@@ -3,6 +3,8 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import type { DecisionAdapter, DecisionEntry, DecisionPage, DecisionSearchResult } from '../types.js';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { RII_SACHSEN_POLICY } from '../network-policy.js';
 
 const URL = 'https://www.justiz.sachsen.de/esamosplus/pages/suchen.aspx';
 
@@ -17,7 +19,7 @@ const URL = 'https://www.justiz.sachsen.de/esamosplus/pages/suchen.aspx';
  * it, and every measured attempt consumed its entire budget and returned
  * nothing. `CaseLawClient` fans all seventeen sources out concurrently, so
  * whatever this number is becomes the floor on total search latency for every
- * `rii:search`. At the previous 15s, Sachsen alone set that floor while
+ * `rii_search`. At the previous 15s, Sachsen alone set that floor while
  * contributing nothing.
  *
  * 6s is a damage bound, not a measurement: there is no successful sample to
@@ -57,7 +59,10 @@ export class SachsenDecisionAdapter implements DecisionAdapter {
     // usual for this endpoint.
     let initial;
     try {
-      initial = await this.http.get<string>(URL, { timeout: LANDING_TIMEOUT_MS, headers: { 'User-Agent': HTTP_USER_AGENT } });
+      initial = await safeAxiosGet<string>(this.http, URL, RII_SACHSEN_POLICY, {
+        timeout: LANDING_TIMEOUT_MS,
+        headers: { 'User-Agent': HTTP_USER_AGENT },
+      });
     } catch (error) {
       throw new Error(
         `Sachsen landing page did not load within ${LANDING_TIMEOUT_MS}ms `
@@ -74,7 +79,10 @@ export class SachsenDecisionAdapter implements DecisionAdapter {
     const setCookie = initial.headers?.['set-cookie'];
     const cookie = Array.isArray(setCookie) ? setCookie.map((value: string) => value.split(';', 1)[0]).join('; ') : undefined;
     try {
-      const response = await this.http.post<string>(URL, form.toString(), { timeout: SEARCH_TIMEOUT_MS, headers: { 'User-Agent': HTTP_USER_AGENT, Referer: URL, 'Content-Type': 'application/x-www-form-urlencoded', ...(cookie ? { Cookie: cookie } : {}) } });
+      const response = await safeAxiosPost<string>(this.http, URL, form.toString(), RII_SACHSEN_POLICY, {
+        timeout: SEARCH_TIMEOUT_MS,
+        headers: { 'User-Agent': HTTP_USER_AGENT, Referer: URL, 'Content-Type': 'application/x-www-form-urlencoded', ...(cookie ? { Cookie: cookie } : {}) },
+      });
       return { html: response.data, fallback: false };
     } catch {
       return { html: initial.data, fallback: true };

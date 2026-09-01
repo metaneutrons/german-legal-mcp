@@ -1,4 +1,4 @@
-import { decodeXmlEntities } from '../../shared/xml.js';
+import { decodeXmlEntities, xmlElementContent } from '../../shared/xml.js';
 
 /**
  * Parser for `rii-dok.dtd`, the format RII publishes each decision in.
@@ -39,13 +39,8 @@ const BODY_SECTIONS: readonly (readonly [tag: string, heading: string])[] = [
   ['sonstlt', 'Sonstiges'],
 ];
 
-function element(xml: string, tag: string): string | undefined {
-  const match = xml.match(new RegExp(`<${tag}(?:\\s[^>]*)?>([\\s\\S]*?)</${tag}>`));
-  return match?.[1];
-}
-
 function textOf(xml: string, tag: string): string {
-  const raw = element(xml, tag);
+  const raw = xmlElementContent(xml, tag);
   return raw === undefined ? '' : stripTags(raw);
 }
 
@@ -89,7 +84,7 @@ function renderSection(fragment: string): string {
 }
 
 function listOf(xml: string, tag: string, separator: RegExp): string[] {
-  const raw = element(xml, tag);
+  const raw = xmlElementContent(xml, tag);
   if (raw === undefined) return [];
   return stripTags(raw)
     .split(separator)
@@ -117,7 +112,7 @@ export function parseRiiDocument(xml: string): RiiXmlDocument {
     sections.push(`## Leitsatz\n\n${headnotes.join('\n\n')}`);
   }
   for (const [tag, heading] of BODY_SECTIONS) {
-    const fragment = element(xml, tag);
+    const fragment = xmlElementContent(xml, tag);
     if (fragment === undefined) continue;
     const rendered = renderSection(fragment);
     if (rendered) sections.push(`## ${heading}\n\n${rendered}`);

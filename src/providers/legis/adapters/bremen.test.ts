@@ -45,4 +45,16 @@ describe('BremenAdapter', () => {
     expect(requestedUrl.searchParams.get('asl')).toBe('bremen203_tpgesetz.c.55340.de');
     expect(requestedUrl.searchParams.get('template')).toBe('20_gp_ifg_meta_detail_d');
   });
+
+  it.each([
+    'http://www.transparenz.bremen.de/metainformationen/gesetz-x-12345',
+    'https://127.0.0.1/private',
+    'https://192.168.1.10/private',
+    'https://169.254.169.254/latest/meta-data/',
+    'https://user:secret@www.transparenz.bremen.de/metainformationen/gesetz-x-12345',
+    'https://www.transparenz.bremen.de/metainformationen/%2e%2e/private',
+  ])('rejects unsafe document URL %s before Axios dispatch', async (id) => {
+    await expect(new BremenAdapter().get('HB', id)).rejects.toThrow(/network policy/);
+    expect(mockAxios.get).not.toHaveBeenCalled();
+  });
 });

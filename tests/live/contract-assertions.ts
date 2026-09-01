@@ -71,7 +71,8 @@ export async function verifySearchAndGet<
   document: LegalResourceDocument<TReference>;
 }> {
   const page = await client.search(request);
-  expect(page.failures, failureMessage(page.failures)).toEqual([]);
+  const failures = reportableFailures(page.failures);
+  expect(failures, failureMessage(failures)).toEqual([]);
   expect(page.results.length, `No live result for ${expected.providerId}`).toBeGreaterThan(0);
   const reference = page.results[0];
   if (!reference) throw new Error(`No live result for ${expected.providerId}`);
@@ -142,9 +143,14 @@ export function verifyTableOfContents(
 }
 
 export function verifyAuthentication(status: ProviderAuthenticationStatus): void {
-  expect(status.state).toBe('authenticated');
-  expect(['credentials', 'institutional', 'network', 'persisted-session', 'other'])
-    .toContain(status.method);
+  const diagnostic = status.message
+    ? `Provider authentication failed: ${status.message}`
+    : 'Provider authentication did not establish a session.';
+  expect(status.state, diagnostic).toBe('authenticated');
+  expect(
+    ['credentials', 'institutional', 'network', 'persisted-session', 'other'],
+    diagnostic,
+  ).toContain(status.method);
 }
 
 export function verifyOperationalStatus(status: ProviderOperationalStatus): void {
@@ -186,4 +192,10 @@ function failureMessage(
   failures: readonly { sourceId: string; message: string }[],
 ): string {
   return failures.map((failure) => `${failure.sourceId}: ${failure.message}`).join('; ');
+}
+
+export function reportableFailures(
+  failures: readonly { sourceId: string; message: string }[],
+): readonly { sourceId: string; message: string }[] {
+  return failures.map(({ sourceId, message }) => ({ sourceId, message }));
 }

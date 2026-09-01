@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
-import { join } from 'node:path';
-import { tmpdir } from 'node:os';
+import { resolveVitestStateDir } from './vitest.state.js';
+
+const stateDir = resolveVitestStateDir('german-legal-mcp-live-');
 
 export default defineConfig({
   test: {
@@ -13,8 +14,7 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 120_000,
     env: {
-      GLMCP_STATE_DIR: process.env.GLMCP_STATE_DIR
-        ?? join(tmpdir(), `german-legal-mcp-live-${process.pid}`),
+      GLMCP_STATE_DIR: stateDir,
     },
   },
 });

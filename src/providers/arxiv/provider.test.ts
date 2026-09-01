@@ -25,7 +25,7 @@ function fakeClient(entries = [entry], html: string | null = '<h1>Intro</h1><p>B
 }
 
 describe('ArxivProvider', () => {
-  it('formats search, metadata and full-text section results', async () => {
+  it('formats search, accepts the legacy alias, and retrieves full text', async () => {
     const client = fakeClient();
     const provider = new ArxivProvider(client);
 
@@ -36,12 +36,12 @@ describe('ArxivProvider', () => {
     })).resolves.toMatchObject({
       content: [{ text: expect.stringContaining('2501.00001') }],
     });
-    await expect(provider.handleToolCall('arxiv:get', {
+    await expect(provider.handleToolCall('arxiv_get', {
       id: entry.id,
     })).resolves.toMatchObject({
       content: [{ text: expect.stringContaining('Summary') }],
     });
-    await expect(provider.handleToolCall('arxiv:get', {
+    await expect(provider.handleToolCall('arxiv_get', {
       id: entry.id,
       section: 'Intro',
     })).resolves.toMatchObject({
@@ -51,11 +51,11 @@ describe('ArxivProvider', () => {
 
   it('handles missing papers, unavailable HTML and unknown tools', async () => {
     await expect(new ArxivProvider(fakeClient([])).handleToolCall(
-      'arxiv:get',
+      'arxiv_get',
       { id: 'missing' },
     )).resolves.toMatchObject({ isError: true });
     await expect(new ArxivProvider(fakeClient([entry], null)).handleToolCall(
-      'arxiv:get',
+      'arxiv_get',
       { id: entry.id, section: 'Intro' },
     )).resolves.toMatchObject({
       content: [{ text: expect.stringContaining('Full HTML text not available') }],

@@ -5,15 +5,36 @@ import type { ToolResult } from '../../../shared/types.js';
 import * as cache from '../cache.js';
 import { htmlToMarkdown } from '../converter.js';
 import { extractSection } from '../../../shared/extract-section.js';
+import {
+  NAUTOS_MAX_TOC_DEPTH,
+  NAUTOS_MAX_TOC_NODES,
+} from '../client.js';
+import {
+  NAUTOS_MAX_DOCUMENT_BYTES,
+  NAUTOS_MAX_SECTION_BYTES,
+} from '../cache.js';
 
-function formatToc(sections: TocSection[], depth = 0): string {
-  return sections.map(s => {
+function formatToc(sections: TocSection[]): string {
+  const lines: string[] = [];
+  const stack = sections.slice().reverse().map((section) => ({ section, depth: 0 }));
+  let nodes = 0;
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    nodes++;
+    if (nodes > NAUTOS_MAX_TOC_NODES || current.depth > NAUTOS_MAX_TOC_DEPTH) {
+      throw new RangeError('nautos TOC exceeds the configured structural limits');
+    }
+    const { section, depth } = current;
     const indent = '  '.repeat(depth);
-    const label = s.label ? `${s.label} ` : '';
-    const line = `${indent}- ${label}${s.title} [\`${s.id}\`]`;
-    const children = s.section ? formatToc(s.section, depth + 1) : '';
-    return children ? `${line}\n${children}` : line;
-  }).join('\n');
+    const label = section.label ? `${section.label} ` : '';
+    lines.push(`${indent}- ${label}${section.title} [\`${section.id}\`]`);
+    if (section.section) {
+      for (let index = section.section.length - 1; index >= 0; index--) {
+        stack.push({ section: section.section[index]!, depth: depth + 1 });
+      }
+    }
+  }
+  return lines.join('\n');
 }
 
 async function fetchAndCache(client: NautosDataClient, acCode: string): Promise<cache.CachedDocument> {
@@ -42,24 +63,60 @@ async function fetchAllSections(client: NautosDataClient, doc: cache.CachedDocum
   const parts: string[] = [
     formatOutline(doc).split('## Inhaltsverzeichnis')[0]?.trim() ?? '',
   ];
+  let totalBytes = Buffer.byteLength(parts[0] ?? '', 'utf8');
+  const append = (markdown: string): void => {
+    const sectionBytes = Buffer.byteLength(markdown, 'utf8');
+    if (sectionBytes > NAUTOS_MAX_SECTION_BYTES) {
+      throw new RangeError(`nautos section exceeds ${NAUTOS_MAX_SECTION_BYTES} bytes`);
+    }
+    totalBytes += sectionBytes + Buffer.byteLength('\n\n---\n\n', 'utf8');
+    if (totalBytes > NAUTOS_MAX_DOCUMENT_BYTES) {
+      throw new RangeError(`nautos full document exceeds ${NAUTOS_MAX_DOCUMENT_BYTES} bytes`);
+    }
+    parts.push(markdown);
+  };
   for (const id of allIds) {
-    if (doc.sections[id]) { parts.push(doc.sections[id]); continue; }
+    if (doc.sections[id]) { append(doc.sections[id]); continue; }
     const html = await client.getSection(doc.din21Id, id);
     if (html) {
       const md = htmlToMarkdown(html);
       doc.sections[id] = md;
-      parts.push(md);
+      append(md);
+      // Merge one section at a time under the cache's cross-process
+      // transaction; writing the caller's whole stale document would discard
+      // sections fetched concurrently by another MCP process.
+      await cache.putSection(doc.acCode, id, md);
     }
   }
-  await cache.put(doc);
   return parts.join('\n\n---\n\n');
 }
 
-function flattenSectionIds(sections: TocSection[]): string[] {
+export function flattenSectionIds(sections: TocSection[]): string[] {
   const ids: string[] = [];
-  for (const s of sections) {
-    ids.push(s.id);
-    if (s.section) ids.push(...flattenSectionIds(s.section));
+  const seen = new Set<string>();
+  const stack = sections.slice().reverse().map((section) => ({ section, depth: 0 }));
+  let nodes = 0;
+  while (stack.length > 0) {
+    const { section, depth } = stack.pop()!;
+    nodes++;
+    if (nodes > NAUTOS_MAX_TOC_NODES || depth > NAUTOS_MAX_TOC_DEPTH) {
+      throw new RangeError('nautos TOC exceeds the configured structural limits');
+    }
+    if (typeof section.id !== 'string' || section.id.length === 0) {
+      throw new TypeError('nautos TOC contains an empty section id');
+    }
+    if (!seen.has(section.id)) {
+      seen.add(section.id);
+      ids.push(section.id);
+    }
+    if (section.section) {
+      if (!Array.isArray(section.section)) {
+        throw new TypeError('nautos TOC contains invalid child sections');
+      }
+      for (let index = section.section.length - 1; index >= 0; index--) {
+        stack.push({ section: section.section[index]!, depth: depth + 1 });
+      }
+    }
   }
   return ids;
 }
@@ -91,6 +148,9 @@ export async function handleGetDocument(client: NautosDataClient, args: Record<s
     const html = await client.getSection(doc.din21Id, section);
     if (!html) return { content: [{ type: 'text', text: `Section "${section}" not found.` }], isError: true };
     const md = htmlToMarkdown(html);
+    if (Buffer.byteLength(md, 'utf8') > NAUTOS_MAX_SECTION_BYTES) {
+      throw new RangeError(`nautos section exceeds ${NAUTOS_MAX_SECTION_BYTES} bytes`);
+    }
     await cache.putSection(acCode, section, md);
     return { content: [{ type: 'text', text: md }] };
   }

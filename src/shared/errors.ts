@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { sanitizeLogText } from './logger.js';
 
 export abstract class BaseError extends Error {
   abstract readonly code: string;
@@ -75,8 +76,10 @@ export class NetworkError extends RecoverableError {
 export function formatToolCallError(error: unknown): string {
   const wrapped = error instanceof BaseError ? error : wrapAxiosError(error);
   return wrapped
-    ? JSON.stringify(wrapped.toJSON(), null, 2)
-    : `Error: ${error instanceof Error ? error.message : String(error)}`;
+    ? JSON.stringify(wrapped.toJSON(), (_key, value) => (
+      typeof value === 'string' ? sanitizeLogText(value) : value
+    ), 2)
+    : `Error: ${sanitizeLogText(error instanceof Error ? error.message : String(error))}`;
 }
 
 /** Convert AxiosError to a BaseError subclass */

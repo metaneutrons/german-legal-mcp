@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 export type Environment = Readonly<Record<string, string | undefined>>;
 
 export interface EnvironmentVariable {
@@ -5,6 +7,8 @@ export interface EnvironmentVariable {
   description: string;
   defaultValue?: string;
   secret?: boolean;
+  /** Optional matcher for a documented family of dynamic variable names. */
+  pattern?: RegExp;
 }
 
 export class ConfigurationError extends Error {
@@ -74,6 +78,31 @@ export function readUrlEnv(
   }
 }
 
+/** Read an operator-controlled browser/API URL with a strict public HTTPS origin. */
+export function readHttpsUrlEnv(
+  name: string,
+  env: Environment = getEnvironment(),
+): string | undefined {
+  const value = readUrlEnv(name, env);
+  if (value === undefined) return undefined;
+  const url = new URL(value);
+  const hostname = url.hostname.toLowerCase();
+  if (
+    url.protocol !== 'https:'
+    || url.username !== ''
+    || url.password !== ''
+    || (url.port !== '' && url.port !== '443')
+    || hostname === 'localhost'
+    || hostname.endsWith('.localhost')
+    || isIP(hostname) !== 0
+  ) {
+    throw new ConfigurationError([
+      `${name} must use a public HTTPS origin without credentials or a custom port`,
+    ]);
+  }
+  return url.toString();
+}
+
 export function readEnumEnv<const T extends readonly string[]>(
   name: string,
   values: T,
@@ -93,11 +122,22 @@ export function redactCataloguedEnvironment(
   variables: readonly EnvironmentVariable[],
   env: Environment = getEnvironment(),
 ): Record<string, string> {
-  return Object.fromEntries(variables.flatMap((entry) => {
+  const exact = variables.flatMap((entry) => {
+    if (entry.pattern) return [];
     const value = readStringEnv(entry.name, env);
     if (value === undefined) return [];
     return [[entry.name, entry.secret ? '[REDACTED]' : value]];
-  }));
+  });
+  const dynamic = variables.flatMap((entry) => {
+    if (!entry.pattern) return [];
+    return Object.entries(env).flatMap(([name, rawValue]) => {
+      if (!entry.pattern?.test(name)) return [];
+      const value = rawValue?.trim();
+      if (!value) return [];
+      return [[name, entry.secret ? '[REDACTED]' : value]];
+    });
+  });
+  return Object.fromEntries([...exact, ...dynamic]);
 }
 
 export function collectConfiguration<T extends Record<string, unknown>>(
@@ -119,8 +159,20 @@ export function collectConfiguration<T extends Record<string, unknown>>(
   return result as T;
 }
 
-export function getLogLevel(env: Environment = getEnvironment()): string {
-  return readStringEnv('GLMCP_LOG_LEVEL', env) ?? readStringEnv('LOG_LEVEL', env) ?? 'info';
+export const LOG_LEVELS = [
+  'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'silent',
+] as const;
+export type LogLevel = typeof LOG_LEVELS[number];
+
+export function getLogLevel(env: Environment = getEnvironment()): LogLevel {
+  // LOG_LEVEL remains a compatibility fallback for pre-4.0 deployments. The
+  // GLMCP-prefixed variable is authoritative when both are present.
+  const normalized: Environment = {
+    ...env,
+    GLMCP_LOG_LEVEL: readStringEnv('GLMCP_LOG_LEVEL', env)
+      ?? readStringEnv('LOG_LEVEL', env),
+  };
+  return readEnumEnv('GLMCP_LOG_LEVEL', LOG_LEVELS, 'info', normalized);
 }
 
 /**

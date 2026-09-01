@@ -3,6 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { ENVIRONMENT_VARIABLES } from './config.js';
 import { getProviderManifest, PROVIDER_MANIFEST } from './provider-manifest.js';
+import { isCanonicalToolName } from './shared/tool-names.js';
 
 describe('provider manifest', () => {
   it('has unique component ids', () => {
@@ -41,6 +42,17 @@ describe('provider manifest', () => {
     for (const entry of PROVIDER_MANIFEST) {
       expect(readme, `provider ${entry.id} is missing from README.md`)
         .toContain(entry.id.toLowerCase());
+    }
+  });
+
+  it('advertises only portable tool names in the MCPB manifest', () => {
+    const manifest = JSON.parse(
+      readFileSync(join(process.cwd(), 'manifest.json'), 'utf-8'),
+    ) as { tools: Array<{ name: string }> };
+
+    expect(manifest.tools.length).toBeGreaterThan(0);
+    for (const { name } of manifest.tools) {
+      expect(isCanonicalToolName(name), `unsupported MCPB tool name: ${name}`).toBe(true);
     }
   });
 

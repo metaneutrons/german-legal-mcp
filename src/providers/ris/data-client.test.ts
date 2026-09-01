@@ -43,8 +43,11 @@ function client(failing?: RisApplication): RisClient {
       return { total: hits.length, page: 1, hits };
     }),
     getNorm: vi.fn(async () => ({ total: 1, page: 1, hits: [federalHit] })),
-    resolveWholeLawUrl: vi.fn(async () => ({ title: 'Law', url: 'https://example.test/toc' })),
-    fetchHtml: vi.fn(async (url: string) => url.endsWith('/toc')
+    resolveWholeLawUrl: vi.fn(async () => ({
+      title: 'Law',
+      url: 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Landesnormen&Gesetzesnummer=1',
+    })),
+    fetchHtml: vi.fn(async (url: string) => url.includes('/GeltendeFassung.wxe')
       ? '<p class="InhaltEintrag">§ 1.</p><p class="InhaltEintrag">Zweck.</p>'
       : '<div class="documentContent"><p>Dokument mit genügend Inhalt für den Test.</p></div>'),
   } as unknown as RisClient;

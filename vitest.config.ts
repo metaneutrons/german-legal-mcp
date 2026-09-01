@@ -1,14 +1,14 @@
 import { defineConfig } from 'vitest/config';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { resolveVitestStateDir } from './vitest.state.js';
+
+const stateDir = resolveVitestStateDir('german-legal-mcp-vitest-');
 
 export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
     env: {
-      GLMCP_STATE_DIR: process.env.GLMCP_STATE_DIR
-        ?? join(tmpdir(), `german-legal-mcp-vitest-${process.pid}`),
+      GLMCP_STATE_DIR: stateDir,
     },
     include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
     coverage: {

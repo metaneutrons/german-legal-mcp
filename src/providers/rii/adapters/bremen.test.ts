@@ -21,7 +21,10 @@ describe('BremenDecisionAdapter', () => {
   it('handles archive rows without a detail link and converts detail HTML', async () => {
     const adapter = new BremenDecisionAdapter({ get: async (url) => ({ data: url.includes('detail') ? '<main><h1>Testentscheidung</h1><p>Beschluss vom 01.01.2026, 1 V 2/26</p></main>' : '<table><tr class="search-result"><td><em>01.01.2026</em></td><td>Archivhinweis</td></tr></table>' }) });
     expect(await adapter.search('HB', '', 10)).toHaveLength(1);
-    const entry = await adapter.get('HB', 'https://example.test/detail.php');
+    const entry = await adapter.get(
+      'HB',
+      'https://www.verwaltungsgericht.bremen.de/entscheidungen/detail-12345',
+    );
     expect(entry.content).toContain('Beschluss');
     expect(entry.date).toBe('01.01.2026');
   });

@@ -2,6 +2,8 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import type { LegisAdapter, SearchResult, LegisEntry } from '../types.js';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { LEGIS_SACHSEN_POLICY } from '../network-policy.js';
 
 const BASE = 'https://www.revosax.sachsen.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
@@ -10,14 +12,16 @@ export class SachsenAdapter implements LegisAdapter {
   readonly states = ['SN'] as const;
 
   async search(_state: string, query: string, limit: number): Promise<SearchResult[]> {
-    const page = await axios.get<string>(`${BASE}/vorschriftensuche`);
+    const page = await safeAxiosGet<string>(axios, `${BASE}/vorschriftensuche`, LEGIS_SACHSEN_POLICY);
     const cookies = page.headers['set-cookie']?.map((c: string) => c.split(';')[0]).join('; ');
     const $ = load(page.data);
     const token = $('input[name=authenticity_token]').first().val();
 
-    const resp = await axios.post<string>(
+    const resp = await safeAxiosPost<string>(
+      axios,
       `${BASE}/suche`,
       `authenticity_token=${encodeURIComponent(String(token))}&search_request%5Bsearch_text%5D=${encodeURIComponent(query)}&search_request%5Bmode%5D=fullsearch&search_request%5Btitle_search%5D=1`,
+      LEGIS_SACHSEN_POLICY,
       {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookies || '' },
         maxRedirects: 5,
@@ -38,7 +42,7 @@ export class SachsenAdapter implements LegisAdapter {
   }
 
   async get(_state: string, id: string): Promise<LegisEntry> {
-    const resp = await axios.get<string>(`${BASE}/vorschrift/${id}`);
+    const resp = await safeAxiosGet<string>(axios, `${BASE}/vorschrift/${id}`, LEGIS_SACHSEN_POLICY);
     const $ = load(resp.data);
 
     const title = $('h1').first().text().trim();

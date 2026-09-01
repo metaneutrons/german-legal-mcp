@@ -11,6 +11,8 @@ import type {
 } from '../types.js';
 import axios from 'axios';
 import { load } from 'cheerio';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { LEGIS_GII_POLICY } from '../network-policy.js';
 
 const BASE_URL = 'https://www.gesetze-im-internet.de';
 
@@ -67,7 +69,7 @@ export class GiiAdapter implements LegisAdapter {
 
   async search(_state: string, _query: string, _limit: number): Promise<SearchResult[]> {
     throw new Error(
-      'BUND does not support search. Use legis:get with id "law/section" (e.g. "bgb/823").',
+      'BUND does not support search. Use legis_get with id "law/section" (e.g. "bgb/823").',
     );
   }
 
@@ -111,7 +113,7 @@ export class GiiAdapter implements LegisAdapter {
     if (this.index && Date.now() - this.index.fetchedAt < TOC_TTL_MS) return this.index.laws;
     this.indexInFlight ??= (async () => {
       try {
-        const response = await axios.get<string>(TOC_URL, {
+        const response = await safeAxiosGet<string>(axios, TOC_URL, LEGIS_GII_POLICY, {
           responseType: 'text',
           headers: { 'User-Agent': HTTP_USER_AGENT },
         });
@@ -176,7 +178,7 @@ export class GiiAdapter implements LegisAdapter {
 
     const url = `${BASE_URL}/${law}/index.html`;
     const entries = await this.toc('BUND', slug);
-    const response = await axios.get(url, {
+    const response = await safeAxiosGet<ArrayBuffer>(axios, url, LEGIS_GII_POLICY, {
       responseType: 'arraybuffer',
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
@@ -210,7 +212,7 @@ export class GiiAdapter implements LegisAdapter {
 
   async toc(_state: string, id: string): Promise<TocEntry[]> {
     const law = id.toLowerCase();
-    const resp = await axios.get(`${BASE_URL}/${law}/index.html`, {
+    const resp = await safeAxiosGet<ArrayBuffer>(axios, `${BASE_URL}/${law}/index.html`, LEGIS_GII_POLICY, {
       responseType: 'arraybuffer',
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });

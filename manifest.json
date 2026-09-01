@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "german-legal-mcp",
   "display_name": "German Legal MCP",
-  "version": "3.2.1",
+  "version": "4.0.0",
   "description": "German, Austrian and EU legal research: legislation, case law, parliamentary materials, preprints and standards — one MCP server; public sources need no subscription credentials.",
   "icon": "icon.png",
   "author": {
@@ -34,22 +34,24 @@
       "win32"
     ],
     "runtimes": {
-      "node": ">=20.0.0"
+      "node": ">=24.0.0"
     }
   },
   "server": {
     "type": "node",
-    "entry_point": "dist/index.js",
+    "entry_point": "dist/bin/german-legal-mcp.js",
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/dist/index.js"
+        "${__dirname}/dist/bin/german-legal-mcp.js"
       ],
       "env": {
+        "GLMCP_EXPORT_DIR": "${user_config.export_dir}",
         "GLMCP_LOG_LEVEL": "${user_config.log_level}",
         "GLMCP_DIP_API_KEY": "${user_config.dip_api_key}",
         "GLMCP_NAUTOS_TENANT_ID": "${user_config.nautos_tenant_id}",
         "GLMCP_NAUTOS_TENANT_KEY": "${user_config.nautos_tenant_key}",
+        "GLMCP_NAUTOS_ENTITLEMENT_ID": "${user_config.nautos_entitlement_id}",
         "GLMCP_NAUTOS_USERNAME": "${user_config.nautos_username}",
         "GLMCP_NAUTOS_PASSWORD": "${user_config.nautos_password}"
       }
@@ -57,30 +59,102 @@
   },
   "tools_generated": true,
   "tools": [
-    { "name": "arxiv:search", "description": "Search arXiv preprints by keywords, author, or category." },
-    { "name": "arxiv:get", "description": "Retrieve an arXiv paper by ID (e.g., \"2501.02725\")." },
-    { "name": "dip:search", "description": "Search Bundestagsdrucksachen (parliamentary documents) via the DIP API." },
-    { "name": "dip:get", "description": "Retrieve the full text of a Bundestagsdrucksache by Dokumentnummer." },
-    { "name": "dip:search_vorgang", "description": "Search legislative processes (Vorgänge) in DIP." },
-    { "name": "dip:search_plenarprotokoll", "description": "Full-text search of Plenarprotokolle (debate transcripts)." },
-    { "name": "eul:search", "description": "Search EU legislation (directives, regulations, treaties) via EUR-Lex." },
-    { "name": "eul:get_document", "description": "Retrieve EU legislation from EUR-Lex by CELEX number (e.g., \"32016R0679\")." },
-    { "name": "icu:search", "description": "Search decisions and opinions of the CJEU via InfoCuria." },
-    { "name": "icu:get_document", "description": "Retrieve a CJEU decision or opinion by case or CELEX number." },
-    { "name": "legis:search", "description": "Search German state legislation (Landesrecht) by keyword." },
-    { "name": "legis:get", "description": "Retrieve a specific law/norm from German federal or state legislation." },
-    { "name": "legis:toc", "description": "Get the table of contents for a law — section numbers and headings." },
-    { "name": "legis:states", "description": "List the German jurisdictions (BUND + 16 Bundesländer) and their backends." },
-    { "name": "rii:search", "description": "Search German federal and state court decisions across seventeen official portals, with paging and per-portal hit totals." },
-    { "name": "rii:get_decision", "description": "Retrieve the full text of a court decision by document ID." },
-    { "name": "ris:search", "description": "Search the Austrian Rechtsinformationssystem des Bundes (RIS)." },
-    { "name": "ris:get", "description": "Retrieve a RIS document as Markdown (with surgical section retrieval)." },
-    { "name": "ris:get_norm", "description": "Retrieve a single paragraph (§) of an Austrian consolidated law." },
-    { "name": "ris:toc", "description": "Get the table of contents of an Austrian consolidated law." },
-    { "name": "nautos:search", "description": "Search DIN/EN/ISO technical standards on nautos.de by document number." },
-    { "name": "nautos:get_document", "description": "Retrieve a DIN/EN/ISO standard by acCode with outline, section and file-output support." }
+    {
+      "name": "arxiv_search",
+      "description": "Search arXiv preprints by keywords, author, or category. Returns metadata: arXiv ID, title, authors, abstract, categories, PDF/HTML links. Use arxiv_get with the arXiv ID to retrieve full text."
+    },
+    {
+      "name": "arxiv_get",
+      "description": "Retrieve an arXiv paper by ID (e.g., \"2501.02725\"). Default: metadata + abstract. With `section` or `save_path`: fetches HTML full text (available for papers from ~2024+). Older papers without HTML return metadata + abstract + PDF link."
+    },
+    {
+      "name": "dip_search",
+      "description": "Search Bundestagsdrucksachen (parliamentary documents) via DIP API. Matches title as a literal substring — NOT a keyword AND/OR search. An extra word breaks the match unless it appears verbatim, in that exact order, in the title. For example \"Tiergesundheitsgesetz\" alone finds dozens of documents, but \"Tiergesundheitsgesetz Änderung\" finds none, because real titles read \"...Änderung des Tiergesundheitsgesetzes...\" — reversed order and a different word ending. Prefer a single distinctive word (e.g. a law's short title) over a natural-language phrase. Returns metadata: Dokumentnummer, title, type, date, PDF URL. Use dip_get to retrieve full text (e.g., Gesetzesbegründung) of a specific Drucksache."
+    },
+    {
+      "name": "dip_get",
+      "description": "Retrieve full text of a Bundestagsdrucksache by Dokumentnummer (e.g., \"19/27426\" for BT-Drs. 19/27426). Returns the extracted text including Gesetzesbegründung. Use `section` for partial content. `save_path` is for export only — when the user wants the document as a file to keep or process elsewhere."
+    },
+    {
+      "name": "dip_search_vorgang",
+      "description": "Search legislative processes (Vorgänge) in DIP. Returns Gesetzgebungsvorgänge with status and linked Drucksachen-Nummern. Useful for tracking a law through the legislative process or finding all related documents. Matches title as a literal substring — NOT a keyword AND/OR search (see dip_search); prefer a single distinctive word over a natural-language phrase."
+    },
+    {
+      "name": "dip_search_plenarprotokoll",
+      "description": "Search Plenarprotokolle (parliamentary debate transcripts) with full text search. Returns protocols where the search term appears in the debate text."
+    },
+    {
+      "name": "eul_search",
+      "description": "Search EU legislation (directives, regulations, treaties) via EUR-Lex SPARQL endpoint. Returns CELEX numbers, titles, and dates."
+    },
+    {
+      "name": "eul_get_document",
+      "description": "Retrieve EU legislation from EUR-Lex by CELEX number (e.g., \"32016R0679\" for GDPR, \"32001L0029\" for InfoSoc). Returns full text in Markdown. Use `section` for partial content: \"Art. 5\", \"Artikel 5\", or \"lines:100-200\". `save_path` is for export only — when the user wants the document as a file to keep or process elsewhere."
+    },
+    {
+      "name": "icu_search",
+      "description": "Search for decisions and opinions of the Court of Justice of the European Union (CJEU) via InfoCuria. Returns list with case numbers, ECLI, dates, and document IDs for retrieval."
+    },
+    {
+      "name": "icu_get_document",
+      "description": "Retrieve a CJEU decision or opinion from InfoCuria by published case number, CELEX number or Logic Doc ID. Returns full text in Markdown with Randnummern as [Rn. 5]{.rn}. A published case number (e.g., \"C-476/17\", \"T-108/25\") is converted to its CELEX form internally, so all three forms work. A CELEX number (e.g., \"62017CJ0476\") or the \"Logic Doc ID\" from an icu_search result (e.g., \"id_320668\") resolve with one request fewer. Use `section` for partial content: \"Rn 5-12\", heading text, or \"lines:100-200\". Use `save_path` when you want the document written to a file for later use outside this conversation."
+    },
+    {
+      "name": "legis_search",
+      "description": "Search German state legislation (Landesrecht) by keyword. Returns results with IDs for retrieval via legis_get. Official abbreviations such as \"HKG\" or \"PolG\" are often more reliable than descriptive phrases. Covers all 16 Bundesländer. BUND does not support search — use legis_get directly."
+    },
+    {
+      "name": "legis_get",
+      "description": "Retrieve a specific law/norm from German federal or state legislation. BUND: id is \"law/section\" — law is the lowercase abbreviation (e.g. \"bgb\", \"gg\", \"stgb\"), section is just the number. An optional \"§\", \"Art.\", \"Paragraph\", or \"Para.\" prefix on the section is stripped automatically, so \"bgb/823\", \"bgb/§ 823\", and \"bgb/§823\" are equivalent; use whichever prefix matches the document type (§ for codes, Art. for the Grundgesetz). Not every law is hosted under its plain abbreviation on gesetze-im-internet.de — some reissued laws use a different URL slug. If this returns \"not found\", a subscription provider that resolves abbreviations through its own index may still find it. Länder: id from legis_search results (format varies by state)."
+    },
+    {
+      "name": "legis_toc",
+      "description": "Get table of contents for a law — compact list of section numbers and headings. Much lighter than legis_get for navigating large laws. BUND: id is just the law abbreviation (e.g., \"bgb\", \"stgb\"). Länder: id from legis_search results."
+    },
+    {
+      "name": "legis_states",
+      "description": "List all 17 available German jurisdictions (BUND + 16 Bundesländer) with their backends."
+    },
+    {
+      "name": "rii_search",
+      "description": "Search for court decisions. Default source \"bund\": federal courts (BVerfG, BGH, BVerwG, BFH, BAG, BSG, BPatG). Source \"BY\": Bavarian state courts. Sources \"NW\", \"NI\" and \"BB\" use the official NRW, NI-VORIS and Brandenburg decision databases. Sources BW, BE, HH, MV, RP, SL, ST, SH, TH, HE use the official jPortal state decision portals. Returns list of decisions with metadata and doc IDs for retrieval."
+    },
+    {
+      "name": "rii_get_decision",
+      "description": "Retrieve full text of a court decision by doc ID. Returns decision in Markdown format with metadata (court, date, file number, ECLI). Use source \"BY\" for IDs from gesetze-bayern.de (format: Y-300-Z-...)."
+    },
+    {
+      "name": "ris_search",
+      "description": "Search the Austrian Rechtsinformationssystem des Bundes (RIS, ris.bka.gv.at). application=\"bundesrecht\"/\"landesrecht\" searches the broad federal/state collections; results may be consolidated law (BrKons/LrKons) or authentic publications, identified by their returned `applikation`. A `bundesland` filter restricts state law to consolidated LrKons results. application=\"judikatur\" = case law — set `court` (Justiz = OGH/OLG/LG, Vwgh = VwGH, Vfgh = VfGH, Bvwg = BVwG). Use sort=\"date\" for the LATEST decisions. Judikatur results are Rechtssätze (legal principles); each lists its full decision text (Entscheidungstext) — fetch that with ris_get. NOTE: this is AUSTRIAN law. For GERMAN case law use rii_*, for German legislation use legis_*."
+    },
+    {
+      "name": "ris_get",
+      "description": "Retrieve a RIS document as Markdown. Pass the `content_url` returned by ris_search (preferred), or an `id` (Dokumentnummer) together with its `applikation`. Use `section` to pull only part of a document (token-preserving), or `save_path` to write the full document to disk and return metadata only."
+    },
+    {
+      "name": "ris_get_norm",
+      "description": "Retrieve a single paragraph (§) of an Austrian consolidated law as Markdown — e.g. law=\"ABGB\" paragraph=\"1295\". application=\"bundesrecht\" (federal) or \"landesrecht\" (state law; set `bundesland`). The surgical, token-preserving way to read ONE § instead of a whole statute."
+    },
+    {
+      "name": "ris_toc",
+      "description": "Get the table of contents (Inhaltsverzeichnis) of an Austrian consolidated law — its §§ with headings — so you can then read one with ris_get_norm. Use the full title if an abbreviation fails (e.g. \"Urheberrechtsgesetz\" rather than \"UrhG\"). application=\"bundesrecht\" (federal) or \"landesrecht\" (+ `bundesland`)."
+    },
+    {
+      "name": "nautos_search",
+      "description": "Search DIN/EN/ISO technical standards on nautos.de by document number. Returns acCode, document number, title, date, and document type. Use nautos_get_document with the acCode to retrieve content."
+    },
+    {
+      "name": "nautos_get_document",
+      "description": "Retrieve a DIN/EN/ISO standard by acCode (from nautos_search). Returns outline (metadata + table of contents) by default. Use `section` to fetch a specific section by ID (e.g., \"sub-4.1\", \"sub-a.1\", \"foreword.nat\"). Use `save_path` to save the full document to a file."
+    }
   ],
   "user_config": {
+    "export_dir": {
+      "type": "directory",
+      "title": "Document Export Directory",
+      "description": "Optional exclusive root for save_path output. Files outside this directory and overwrites are refused.",
+      "required": false
+    },
     "log_level": {
       "type": "string",
       "title": "Log Level",
@@ -108,11 +182,18 @@
       "sensitive": true,
       "required": false
     },
+    "nautos_entitlement_id": {
+      "type": "string",
+      "title": "nautos Entitlement Identity",
+      "description": "Optional stable non-secret licence label added to the tenant/account cache partition.",
+      "required": false
+    },
     "nautos_username": {
       "type": "string",
       "title": "nautos Username",
       "description": "Optional — nautos.de credential login.",
-      "required": false
+      "required": false,
+      "sensitive": true
     },
     "nautos_password": {
       "type": "string",

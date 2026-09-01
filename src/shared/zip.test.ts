@@ -70,4 +70,29 @@ describe('readFirstZipEntry', () => {
     expect(() => readFirstZipEntry(Buffer.from('<html>not a zip</html>')))
       .toThrow(/end-of-central-directory/);
   });
+
+  it('rejects declared and actual expansion beyond a bounded output limit', () => {
+    const archive = zipWithStreamedEntry('doc.xml', 'A'.repeat(20_000));
+    const central = archive.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    const declaredBomb = Buffer.from(archive);
+    declaredBomb.writeUInt32LE(20_000, central + 24);
+    expect(() => readFirstZipEntry(declaredBomb, { maxEntryBytes: 1_000 }))
+      .toThrow(/uncompressed limit/);
+
+    const undeclaredBomb = Buffer.from(archive);
+    undeclaredBomb.writeUInt32LE(0, central + 24);
+    expect(() => readFirstZipEntry(undeclaredBomb, { maxEntryBytes: 1_000 }))
+      .toThrow();
+  });
+
+  it('rejects archives and offsets outside explicit bounds', () => {
+    const archive = zipWithStreamedEntry('doc.xml', 'safe');
+    expect(() => readFirstZipEntry(archive, { maxArchiveBytes: archive.length - 1 }))
+      .toThrow(/archive exceeds/);
+
+    const central = archive.indexOf(Buffer.from([0x50, 0x4b, 0x01, 0x02]));
+    const invalidOffset = Buffer.from(archive);
+    invalidOffset.writeUInt32LE(0xfffffff0, central + 42);
+    expect(() => readFirstZipEntry(invalidOffset)).toThrow(/outside the archive/);
+  });
 });
