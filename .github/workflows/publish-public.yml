@@ -3,18 +3,12 @@ name: Publish public release
 on:
   push:
     tags: ['v*']
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: Existing signed v-prefixed tag to verify without publishing
-        required: true
-        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: public-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  group: public-release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -23,29 +17,27 @@ jobs:
     timeout-minutes: 30
     outputs:
       commit: ${{ steps.identity.outputs.commit }}
-      tag: ${{ steps.identity.outputs.tag }}
       version: ${{ steps.identity.outputs.version }}
     env:
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
+          package-manager-cache: false
       - name: Bind public release identity
         id: identity
         run: |
           node scripts/verify-public-release-ref.mjs "$RELEASE_TAG"
           echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
           version=$(node -p "require('./package.json').version")
           echo "version=$version" >> "$GITHUB_OUTPUT"
       - name: Preflight immutable public destinations
-        if: github.event_name == 'push'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/verify-release-destinations.mjs "$RELEASE_TAG"
@@ -60,16 +52,17 @@ jobs:
     outputs:
       npm_tarball: ${{ steps.npm_pack.outputs.filename }}
     env:
-      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ needs.verify.outputs.commit }}
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
+          package-manager-cache: false
       - run: npm ci --ignore-scripts
       - run: node scripts/verify-public-release-ref.mjs "$RELEASE_TAG"
       - run: npm run build
@@ -166,7 +159,6 @@ jobs:
           retention-days: 14
 
   release:
-    if: github.event_name == 'push'
     needs: [verify, artifacts]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -176,16 +168,17 @@ jobs:
       id-token: write
       attestations: write
     env:
-      RELEASE_TAG: ${{ needs.verify.outputs.tag }}
+      RELEASE_TAG: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-          ref: ${{ needs.verify.outputs.commit }}
+          ref: ${{ github.ref }}
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
+          package-manager-cache: false
           registry-url: https://registry.npmjs.org
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -218,7 +211,7 @@ jobs:
             release-artifacts/${{ needs.artifacts.outputs.npm_tarball }}
             release-artifacts/german-legal-mcp-${{ needs.verify.outputs.version }}.sbom.cdx.json
             release-artifacts/german-legal-mcp.mcpb
-            release-artifacts/german-legal-mcp-${{ needs.verify.outputs.tag }}.sbom.cdx.json
+            release-artifacts/german-legal-mcp-${{ github.ref_name }}.sbom.cdx.json
             release-artifacts/provenance.intoto.jsonl
             release-artifacts/SHA256SUMS
 
@@ -237,7 +230,7 @@ jobs:
             "release-artifacts/$NPM_TARBALL" \
             "release-artifacts/german-legal-mcp-${{ needs.verify.outputs.version }}.sbom.cdx.json" \
             release-artifacts/german-legal-mcp.mcpb \
-            "release-artifacts/german-legal-mcp-${{ needs.verify.outputs.tag }}.sbom.cdx.json" \
+            "release-artifacts/german-legal-mcp-${{ github.ref_name }}.sbom.cdx.json" \
             release-artifacts/provenance.intoto.jsonl \
             release-artifacts/SHA256SUMS
 
