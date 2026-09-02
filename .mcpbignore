@@ -19,6 +19,7 @@
 /eslint.config.js
 /commitlint.config.js
 /.markdownlint.json
+/.codacy.yml
 /.gitignore
 /.mcpbignore
 /.npmignore
