@@ -195,14 +195,7 @@ jobs:
             release-artifacts "$RELEASE_TAG" public "$GITHUB_REPOSITORY" \
             "${{ needs.verify.outputs.commit }}" publish-public.yml \
             "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"
-          node -e '
-            const [major, minor, patch] = process.env.npm_config_user_agent
-              .match(/npm\/(\d+)\.(\d+)\.(\d+)/).slice(1).map(Number);
-            if (major < 11 || (major === 11 && minor < 5)) {
-              throw new Error("npm " + [major, minor, patch].join(".")
-                + " lacks trusted publishing support");
-            }
-          '
+          node scripts/verify-npm-trusted-publishing-version.mjs "$(npm --version)"
 
       - name: Attest every exact public release subject
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
