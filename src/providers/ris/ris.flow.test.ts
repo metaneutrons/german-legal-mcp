@@ -34,7 +34,7 @@ describe('RIS provider flow (fixture-backed, offline)', () => {
   it('searches Judikatur, surfaces the linked full decision, then gets + converts it', async () => {
     const provider = providerWithFixtures();
 
-    const search = await provider.handleToolCall('ris:search', {
+    const search = await provider.handleToolCall('ris_search', {
       query: 'Werknutzung',
       application: 'judikatur',
       court: 'Justiz',
@@ -46,7 +46,7 @@ describe('RIS provider flow (fixture-backed, offline)', () => {
     expect(searchText).toContain('full decision');
     expect(searchText).toContain('JJT_20201210_OGH0002_0040OB00182_20Y0000_000');
 
-    const get = await provider.handleToolCall('ris:get', {
+    const get = await provider.handleToolCall('ris_get', {
       id: 'JJT_20201210_OGH0002_0040OB00182_20Y0000_000',
       applikation: 'Justiz',
     });

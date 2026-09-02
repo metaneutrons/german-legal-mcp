@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { AxiosInstance } from 'axios';
 import type { CaseLawReference } from '../../contracts/legal-resource.js';
-import { celexCandidates, IcuDataClient } from './data-client.js';
+import { celexCandidates, createSearchPayload, IcuDataClient } from './data-client.js';
 
 const content = {
   docType: 'Urteil',
@@ -33,7 +33,7 @@ describe('IcuDataClient', () => {
       court: 'Gerichtshof',
       fileNumber: 'C-1/26',
       ecli: 'ECLI:EU:C:2026:1',
-      provenance: { providerDocumentId: 'id_123' },
+      provenance: { providerDocumentId: '62026CJ0001' },
     });
     expect((await data.get(page.results[0]!)).content.value).toContain('[Rn. 1]{.rn}');
   });
@@ -89,6 +89,28 @@ describe('IcuDataClient', () => {
       expect.objectContaining({ searchTerm: '62026CJ0001' }),
       expect.any(Object),
     );
+  });
+
+  it('sends the complete current search contract and exact identifier filters', () => {
+    expect(createSearchPayload('Datenschutz', 'de', 5)).toMatchObject({
+      searchTerm: 'Datenschutz',
+      sortTermList: [{ sortDirection: 'DESC', sortTerm: 'SCORE' }],
+      pagination: { pageNumber: 0, pageSize: 5, from: 1, to: 10 },
+      language: 'DE',
+      publishedId: '',
+      ecli: '',
+      logicDocId: '',
+      repJurExpand: '',
+      filtersValue: [],
+      advancedFiltersValue: [],
+    });
+    expect(createSearchPayload('C-311/18', 'DE', 1)).toMatchObject({
+      searchTerm: '"C-311/18"',
+      publishedId: 'C-311/18',
+    });
+    expect(createSearchPayload('ecli:eu:c:2020:559', 'DE', 1)).toMatchObject({
+      ecli: 'ECLI:EU:C:2020:559',
+    });
   });
 
   it('filters scope, validates references and reports missing ids', async () => {

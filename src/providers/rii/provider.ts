@@ -18,6 +18,8 @@ import {
 } from './client.js';
 import { clusterDecisions, describeClusters } from './cluster.js';
 import type { DecisionAdapter, SourcedDecisionSearchResult } from './types.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
+import { assertRiiDocumentId } from './network-policy.js';
 
 const logger = rootLogger.child({ module: 'rii-provider' });
 
@@ -43,17 +45,18 @@ export class RiiProvider implements Provider {
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<ToolResult> {
+    const canonicalName = normalizeToolName(toolName);
     const source = (args.source as string) || 'BUND';
 
-    if (toolName === 'rii:search') {
+    if (canonicalName === 'rii_search') {
       return this.handleSearch(source, args);
     }
-    if (toolName === 'rii:get_decision') {
+    if (canonicalName === 'rii_get_decision') {
       if (source === 'ALL') {
         return {
           content: [{
             type: 'text',
-            text: 'source "ALL" is only valid for rii:search; choose the source from a search result for rii:get_decision.',
+            text: 'source "ALL" is only valid for rii_search; choose the source from a search result for rii_get_decision.',
           }],
           isError: true,
         };
@@ -185,7 +188,7 @@ export class RiiProvider implements Provider {
       part?: string;
       section?: string;
     };
-    const decision = await this.client.getDecision(source, doc_id, { part });
+    const decision = await this.client.getDecision(source, assertRiiDocumentId(source, doc_id), { part });
     validateConversion(decision.content, source);
     const markdown = [
       `# ${decision.title}`,

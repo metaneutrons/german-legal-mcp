@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
  * Startup smoke test for the published entrypoint. Validates that the built
- * `dist/index.js` actually loads and runs — catching broken imports, a config
- * module that throws, or a packaging mistake that `npm run build` alone would
- * not surface. Four checks:
+ * package.json's declared binary actually loads and runs — catching broken
+ * imports, a config module that throws, or a packaging mistake that `npm run
+ * build` alone would not surface. Four checks:
  *
  *   1. `--version` prints the package version and exits 0 (entrypoint + config
  *      parse without starting the server).
@@ -22,10 +22,18 @@ import { readFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const entry = join(root, 'dist', 'index.js');
-const pkgVersion = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8')).version;
+const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf-8'));
+const binEntry = typeof packageJson.bin === 'string'
+  ? packageJson.bin
+  : packageJson.bin?.['german-legal-mcp'] ?? Object.values(packageJson.bin ?? {})[0];
+if (typeof binEntry !== 'string' || binEntry.length === 0) {
+  throw new Error('package.json declares no german-legal-mcp binary entry point.');
+}
+const entry = join(root, binEntry);
+const pkgVersion = packageJson.version;
 
 function fail(msg) {
   console.error(`Startup smoke FAILED: ${msg}`);
@@ -35,7 +43,7 @@ function fail(msg) {
 function run(args, { timeoutMs, env } = {}) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [entry, ...args], {
-      env: { ...process.env, ...env },
+      env: { ...getDefaultEnvironment(), ...env },
       // Keep stdin open so server mode does not see EOF and exit immediately.
       stdio: ['pipe', 'pipe', 'pipe'],
     });
@@ -84,19 +92,19 @@ console.log('✓ server booted and reported readiness');
 // --- Check 3: CLI mode --help for a real tool, no network involved
 // Asserts on formatToolHelp()'s distinguishing output shape, not just
 // substrings the global --help text also happens to contain (the tool list
-// includes "arxiv:search" and the usage block includes "OPTIONS:") — a
+// includes "arxiv_search" and the usage block includes "OPTIONS:") — a
 // looser check here previously stayed green while argv order made
-// `arxiv:search --help` fall through to the *global* help instead of the
+// `arxiv_search --help` fall through to the *global* help instead of the
 // tool's own.
-const h = await run(['arxiv:search', '--help'], { timeoutMs: 10_000 });
+const h = await run(['arxiv_search', '--help'], { timeoutMs: 10_000 });
 if (h.code !== 0) fail(`CLI --help exited with code ${h.code}\n${h.stderr}`);
-if (!h.stdout.startsWith('arxiv:search — ') || h.stdout.includes('TOOLS (')) {
+if (!h.stdout.startsWith('arxiv_search — ') || h.stdout.includes('TOOLS (')) {
   fail(`CLI --help printed unexpected output (looks like the global --help):\n${h.stdout}`);
 }
-console.log('✓ CLI mode: arxiv:search --help');
+console.log('✓ CLI mode: arxiv_search --help');
 
 // --- Check 4: an unknown tool name exits 1, not the MCP server
-const u = await run(['nope:nope'], { timeoutMs: 10_000 });
+const u = await run(['nope_nope'], { timeoutMs: 10_000 });
 if (u.code !== 1) fail(`unknown tool exited with code ${u.code}, expected 1\n${u.stderr}`);
 if (u.stderr.includes('MCP server connected and ready')) {
   fail('unknown tool name fell through to MCP server startup');

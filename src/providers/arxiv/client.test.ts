@@ -56,6 +56,6 @@ describe('ArxivClient', () => {
 
   it('returns null when the HTML fetch fails', async () => {
     mockAxios.get.mockImplementationOnce(() => Promise.reject(new Error('404')));
-    await expect(new ArxivClient().getHtml('missing')).resolves.toBeNull();
+    await expect(new ArxivClient().getHtml('2501.00001')).resolves.toBeNull();
   });
 });

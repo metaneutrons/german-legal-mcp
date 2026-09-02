@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { load } from 'cheerio';
 import { HTTP_USER_AGENT } from '../../config.js';
+import { safeAxiosGet } from '../../shared/network-policy.js';
 import { arxivConfig } from './config.js';
+import { ARXIV_API_POLICY, ARXIV_HTML_POLICY } from './network-policy.js';
 
 export interface ArxivEntry {
   id: string;
@@ -23,9 +25,10 @@ export class ArxivClient {
   async search(params: Record<string, string | number>): Promise<{ total: number; entries: ArxivEntry[] }> {
     // arXiv's API terms ask callers to identify themselves; every other client
     // in this project already does, and a generic library UA invites throttling.
-    const { data } = await axios.get<string>(arxivConfig.apiUrl, {
+    const { data } = await safeAxiosGet<string>(axios, arxivConfig.apiUrl, ARXIV_API_POLICY, {
       params,
       timeout: 30000,
+      maxContentLength: 10 * 1024 * 1024,
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
     return this.parseAtom(data);
@@ -33,10 +36,16 @@ export class ArxivClient {
 
   async getHtml(arxivId: string): Promise<string | null> {
     try {
-      const { data } = await axios.get<string>(`${arxivConfig.htmlUrl}/${arxivId}`, {
+      const { data } = await safeAxiosGet<string>(
+        axios,
+        `${arxivConfig.htmlUrl}/${arxivId}`,
+        ARXIV_HTML_POLICY,
+        {
         timeout: 30000,
+        maxContentLength: 25 * 1024 * 1024,
         headers: { 'User-Agent': HTTP_USER_AGENT },
-      });
+        },
+      );
       return data;
     } catch {
       return null;

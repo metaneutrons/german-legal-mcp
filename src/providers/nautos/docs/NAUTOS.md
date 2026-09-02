@@ -1,6 +1,9 @@
 # nautos.de API Blueprint
 
 > Reverse-engineered March 2026. Two separate API systems: the **nautos API** (`/api/v1/`) for search, metadata, and access control, and the **NV Viewer API** (`/api/nv/nv-rest/`) for document content delivery.
+>
+> This records portal observations, not current configuration defaults. The
+> README/environment catalogue is the SSOT for the 4.0 implementation.
 
 ## Authentication
 
@@ -32,7 +35,9 @@ Current DWW response: `{ "loginOption": "IPAddressLogin" }`.
 
 All return the same response shape: `{ token, refreshToken, tenantId, userAccountId, ... }`.
 
-**Future user-based auth**: Add `GLMCP_NAUTOS_USERNAME` + `GLMCP_NAUTOS_PASSWORD` env vars. Client auto-detects login method via `GET /api/authentication/{tenantKey}` and uses the appropriate endpoint.
+**Implemented user-based auth**: `GLMCP_NAUTOS_USERNAME` and
+`GLMCP_NAUTOS_PASSWORD` provide the credential fallback when IP/tenant access
+does not authenticate.
 
 ### NV Viewer API (`/api/nv/nv-rest/`)
 
@@ -498,7 +503,9 @@ No special pandoc spans (`[Rn. 5]{.rn}`, `[S. 110]{.page}`) are needed. Converte
 - **Pure REST API** — no browser automation needed. Use Axios.
 - **Two-phase document retrieval** — outline first (TOC + metadata), then sections on demand (matches existing project pattern).
 - **Auth chain is 5 steps** — cache the `xSHISecurity` JWT (valid ~3h) to avoid repeating the full chain for every request.
-- **Section-based caching** — cache individual sections by `{din21Id}/{sectionId}`. The document structure and TOC can be cached separately.
+- **Identity-scoped caching** — cache document data beneath an opaque scope
+  derived from tenant, account and optional `GLMCP_NAUTOS_ENTITLEMENT_ID`.
+  Pre-4.0 unbound entries are never read as current.
 - **Content conversion** — Cheerio + Turndown, as in the other HTML-sourced providers. The semantic CSS classes map cleanly to Markdown headings, lists, paragraphs.
 
 ### Auth Token Lifecycle
@@ -516,19 +523,23 @@ Cache strategy: store `xSHISecurity` per `din21Id`, refresh when expired (check 
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GLMCP_NAUTOS_ENABLED` | Yes | Enable nautos provider (set to `true`) |
-| `GLMCP_NAUTOS_TENANT_KEY` | No | Tenant key (default: `DWW`) |
-| `GLMCP_NAUTOS_TENANT_ID` | No | Tenant ID (default: `525d5a37-ecc1-4d0b-9ada-ad3b8fc20761`) |
+| `GLMCP_NAUTOS_ENABLED` | No | Explicit override; otherwise auto-enabled when tenant or user credentials exist. |
+| `GLMCP_NAUTOS_TENANT_KEY` | For IP-based access | Tenant key; no institution-specific default is embedded. |
+| `GLMCP_NAUTOS_TENANT_ID` | No | Tenant ID, detected from authentication when available. |
+| `GLMCP_NAUTOS_USERNAME` | For user access | Account username. |
+| `GLMCP_NAUTOS_PASSWORD` | With username | Account password; secret. |
+| `GLMCP_NAUTOS_ENTITLEMENT_ID` | No | Stable non-secret licence identity added to the cache partition. |
 
-JWT is obtained automatically via `POST /api/authentication/{tenantKey}` (IP-based auth, 12h TTL). No credentials needed.
+For IP-based access, the JWT is obtained automatically through the configured
+tenant. User credentials are the fallback. Cached licensed content is bound to
+the derived entitlement identity in both cases.
 
-### Proposed Tools
+### Implemented tools
 
 | Tool | Description |
 |------|-------------|
-| `nautos:search` | Search standards by document number or keywords |
-| `nautos:get_detail` | Get full metadata for a standard by acCode |
-| `nautos:get_document` | Two-phase: outline (TOC + metadata) first, then sections via `section` param |
+| `nautos_search` | Search standards by document number or keywords |
+| `nautos_get_document` | Two-phase: outline (TOC + metadata) first, then sections via `section` param |
 
 ### Open Questions
 

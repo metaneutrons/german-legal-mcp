@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { readFile, mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { RisProvider } from './provider.js';
@@ -24,7 +23,7 @@ const NORM_HTML = readFileSync(
   'utf8',
 );
 
-/** Minimal RIS Inhaltsverzeichnis HTML for the ris:toc handler test. */
+/** Minimal RIS Inhaltsverzeichnis HTML for the ris_toc handler test. */
 const TOC_HTML =
   '<html><body>' +
   '<p class="InhaltEintrag">§ 1.</p><p class="InhaltEintrag">Begriff.</p>' +
@@ -56,85 +55,97 @@ function memCache(seed?: CachedToc): RisTocCache {
 const text = (r: { content: Array<{ text: string }> }): string => r.content.map((c) => c.text).join('\n');
 
 describe('RisProvider', () => {
-  it('exposes ris:search, ris:get, ris:get_norm and ris:toc', () => {
+  it('exposes ris_search, ris_get, ris_get_norm and ris_toc', () => {
     const provider = new RisProvider(clientStub());
     expect(provider.getTools().map((t) => t.name)).toEqual([
-      'ris:search',
-      'ris:get',
-      'ris:get_norm',
-      'ris:toc',
+      'ris_search',
+      'ris_get',
+      'ris_get_norm',
+      'ris_toc',
     ]);
   });
 
-  it('ris:toc resolves the whole-law URL and returns a parsed § list', async () => {
-    const resolveWholeLawUrl = vi.fn().mockResolvedValue({ title: 'ABGB', url: 'https://x/gesamt.html' });
+  it('ris_toc resolves the whole-law URL and returns a parsed § list', async () => {
+    const resolveWholeLawUrl = vi.fn().mockResolvedValue({
+      title: 'ABGB',
+      url: 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10001622',
+    });
     const fetchHtml = vi.fn().mockResolvedValue(TOC_HTML);
     const provider = new RisProvider(clientStub({ resolveWholeLawUrl, fetchHtml }), memCache());
 
-    const res = await provider.handleToolCall('ris:toc', { law: 'ABGB' });
+    const res = await provider.handleToolCall('ris_toc', { law: 'ABGB' });
     expect(resolveWholeLawUrl).toHaveBeenCalledWith('bundesrecht', expect.objectContaining({ law: 'ABGB' }));
     const t = text(res);
     expect(t).toContain('Inhaltsverzeichnis (2 §§)');
     expect(t).toContain('§ 1 — Begriff');
     expect(t).toContain('§ 2 — Zweiter');
-    expect(t).toContain('ris:get_norm');
+    expect(t).toContain('ris_get_norm');
   });
 
-  it('ris:toc serves a warm cache without re-fetching the whole-law HTML', async () => {
-    const resolveWholeLawUrl = vi.fn().mockResolvedValue({ title: 'ABGB', url: 'https://x/gesamt.html' });
+  it('ris_toc serves a warm cache without re-fetching the whole-law HTML', async () => {
+    const wholeLawUrl = 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10001622';
+    const resolveWholeLawUrl = vi.fn().mockResolvedValue({ title: 'ABGB', url: wholeLawUrl });
     const fetchHtml = vi.fn().mockResolvedValue(TOC_HTML);
     const cache = memCache({
-      url: 'https://x/gesamt.html',
+      url: wholeLawUrl,
       title: 'ABGB',
       entries: [{ paragraph: '1295', heading: 'Schadenersatz' }],
       fetchedAt: Date.now(),
     });
     const provider = new RisProvider(clientStub({ resolveWholeLawUrl, fetchHtml }), cache);
 
-    const res = await provider.handleToolCall('ris:toc', { law: 'ABGB' });
+    const res = await provider.handleToolCall('ris_toc', { law: 'ABGB' });
     expect(fetchHtml).not.toHaveBeenCalled();
     expect(text(res)).toContain('§ 1295 — Schadenersatz');
   });
 
-  it('ris:toc caches the parsed result — a second call does not re-fetch', async () => {
-    const resolveWholeLawUrl = vi.fn().mockResolvedValue({ title: 'ABGB', url: 'https://x/gesamt.html' });
+  it('ris_toc caches the parsed result — a second call does not re-fetch', async () => {
+    const resolveWholeLawUrl = vi.fn().mockResolvedValue({
+      title: 'ABGB',
+      url: 'https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10001622',
+    });
     const fetchHtml = vi.fn().mockResolvedValue(TOC_HTML);
     const provider = new RisProvider(clientStub({ resolveWholeLawUrl, fetchHtml }), memCache());
 
-    await provider.handleToolCall('ris:toc', { law: 'ABGB' });
-    await provider.handleToolCall('ris:toc', { law: 'ABGB' });
+    await provider.handleToolCall('ris_toc', { law: 'ABGB' });
+    await provider.handleToolCall('ris_toc', { law: 'ABGB' });
     expect(fetchHtml).toHaveBeenCalledTimes(1);
   });
 
-  it('ris:toc errors with a hint when the law cannot be resolved', async () => {
+  it('ris_toc errors with a hint when the law cannot be resolved', async () => {
     const resolveWholeLawUrl = vi.fn().mockResolvedValue(null);
     const provider = new RisProvider(clientStub({ resolveWholeLawUrl }), memCache());
 
-    const res = await provider.handleToolCall('ris:toc', { law: 'UrhG' });
+    const res = await provider.handleToolCall('ris_toc', { law: 'UrhG' });
     expect(res.isError).toBe(true);
     expect(text(res)).toContain('full title');
   });
 
-  it('ris:get_norm fetches a specific § and returns its text', async () => {
+  it('ris_get_norm fetches a specific § and returns its text', async () => {
     const getNorm = vi.fn().mockResolvedValue({
       total: 1,
       page: 1,
-      hits: [{ id: 'NOR12019037', applikation: 'BrKons', title: 'ABGB', contentUrl: 'https://x/n.html' }],
+      hits: [{
+        id: 'NOR12019037',
+        applikation: 'BrKons',
+        title: 'ABGB',
+        contentUrl: 'https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.html',
+      }],
     });
     const fetchHtml = vi.fn().mockResolvedValue(NORM_HTML);
     const provider = new RisProvider(clientStub({ getNorm, fetchHtml }));
 
-    const res = await provider.handleToolCall('ris:get_norm', { law: 'ABGB', paragraph: '1295' });
+    const res = await provider.handleToolCall('ris_get_norm', { law: 'ABGB', paragraph: '1295' });
     expect(getNorm).toHaveBeenCalledWith('bundesrecht', expect.objectContaining({ law: 'ABGB', paragraph: '1295' }));
     expect(text(res)).toContain('1295');
     expect(text(res)).toContain('Jedermann');
   });
 
-  it('ris:get_norm errors when the § is not found', async () => {
+  it('ris_get_norm errors when the § is not found', async () => {
     const getNorm = vi.fn().mockResolvedValue({ total: 0, page: 1, hits: [] });
     const provider = new RisProvider(clientStub({ getNorm }));
 
-    const res = await provider.handleToolCall('ris:get_norm', { law: 'ABGB', paragraph: '99999' });
+    const res = await provider.handleToolCall('ris_get_norm', { law: 'ABGB', paragraph: '99999' });
     expect(res.isError).toBe(true);
   });
 
@@ -150,18 +161,18 @@ describe('RisProvider', () => {
           organ: 'OGH',
           date: '2024-01-01',
           ecli: 'ECLI:AT:OGH',
-          contentUrl: 'https://www.ris.bka.gv.at/x/y.html',
+          contentUrl: 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
         },
       ],
     });
     const provider = new RisProvider(clientStub({ search }));
 
-    const res = await provider.handleToolCall('ris:search', { query: 'x', application: 'judikatur', court: 'Justiz' });
+    const res = await provider.handleToolCall('ris_search', { query: 'x', application: 'judikatur', court: 'Justiz' });
     expect(res.isError).toBeFalsy();
     expect(text(res)).toContain('Found 82 results');
     expect(text(res)).toContain('`JJT_1`');
     expect(text(res)).toContain('OGH');
-    expect(text(res)).toContain('y.html');
+    expect(text(res)).toContain('JJT_1.html');
   });
 
   it('passes sort through and surfaces the newest linked full decision', async () => {
@@ -175,14 +186,14 @@ describe('RisProvider', () => {
           title: 'Rechtssatz RS1',
           organ: 'OGH',
           date: '2026-06-23',
-          contentUrl: 'https://x/rs.html',
+          contentUrl: 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJR_1/JJR_1.html',
           decisionTexts: [{ id: 'JJT_LATEST', date: '2026-06-23', geschaeftszahl: '3 Ob 73/26w' }],
         },
       ],
     });
     const provider = new RisProvider(clientStub({ search }));
 
-    const res = await provider.handleToolCall('ris:search', {
+    const res = await provider.handleToolCall('ris_search', {
       query: 'x',
       application: 'judikatur',
       court: 'Justiz',
@@ -211,7 +222,7 @@ describe('RisProvider', () => {
     });
     const provider = new RisProvider(clientStub({ search }));
 
-    const res = await provider.handleToolCall('ris:search', { query: 'x', application: 'judikatur', court: 'Vwgh' });
+    const res = await provider.handleToolCall('ris_search', { query: 'x', application: 'judikatur', court: 'Vwgh' });
     expect(text(res)).toContain('JWT_1');
     expect(text(res)).toContain('applikation=Vwgh');
   });
@@ -227,13 +238,13 @@ describe('RisProvider', () => {
           title: 'Tiroler Bauordnung 2022',
           organ: 'LReg Tirol',
           bundesland: 'Tirol',
-          contentUrl: 'https://x/l.html',
+          contentUrl: 'https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_1/LGBLA_TI_1.html',
         },
       ],
     });
     const provider = new RisProvider(clientStub({ search }));
 
-    const res = await provider.handleToolCall('ris:search', { query: 'Bauordnung', application: 'landesrecht' });
+    const res = await provider.handleToolCall('ris_search', { query: 'Bauordnung', application: 'landesrecht' });
     expect(search).toHaveBeenCalledWith('landesrecht', expect.objectContaining({ query: 'Bauordnung' }));
     expect(text(res)).toContain('Tiroler Bauordnung');
     expect(text(res)).toContain('Tirol');
@@ -247,7 +258,7 @@ describe('RisProvider', () => {
     });
     const provider = new RisProvider(clientStub({ search }));
 
-    await provider.handleToolCall('ris:search', {
+    await provider.handleToolCall('ris_search', {
       query: 'Bauordnung',
       application: 'landesrecht',
       bundesland: 'Wien',
@@ -258,7 +269,7 @@ describe('RisProvider', () => {
   it('reports an empty result set cleanly', async () => {
     const search = vi.fn().mockResolvedValue({ total: 0, page: 1, hits: [] });
     const provider = new RisProvider(clientStub({ search }));
-    const res = await provider.handleToolCall('ris:search', { query: 'zzz' });
+    const res = await provider.handleToolCall('ris_search', { query: 'zzz' });
     expect(text(res)).toContain('No RIS results');
   });
 
@@ -266,8 +277,9 @@ describe('RisProvider', () => {
     const fetchHtml = vi.fn().mockResolvedValue(REAL_DOC_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
 
-    const res = await provider.handleToolCall('ris:get', { content_url: 'https://www.ris.bka.gv.at/x/y.html' });
-    expect(fetchHtml).toHaveBeenCalledWith('https://www.ris.bka.gv.at/x/y.html');
+    const url = 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html';
+    const res = await provider.handleToolCall('ris_get', { content_url: url });
+    expect(fetchHtml).toHaveBeenCalledWith(url);
     expect(text(res)).toContain('OGH');
     expect(text(res)).toContain('Werknutzung');
   });
@@ -276,7 +288,7 @@ describe('RisProvider', () => {
     const fetchHtml = vi.fn().mockResolvedValue(REAL_DOC_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
 
-    await provider.handleToolCall('ris:get', { id: 'JJT_1', applikation: 'Justiz' });
+    await provider.handleToolCall('ris_get', { id: 'JJT_1', applikation: 'Justiz' });
     expect(fetchHtml).toHaveBeenCalledWith('https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html');
   });
 
@@ -284,7 +296,7 @@ describe('RisProvider', () => {
     const fetchHtml = vi.fn().mockResolvedValue(REAL_DOC_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
 
-    await provider.handleToolCall('ris:get', { id: 'NOR12018914', applikation: 'BrKons' });
+    await provider.handleToolCall('ris_get', { id: 'NOR12018914', applikation: 'BrKons' });
     expect(fetchHtml).toHaveBeenCalledWith(
       'https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12018914/NOR12018914.html',
     );
@@ -294,7 +306,10 @@ describe('RisProvider', () => {
     const fetchHtml = vi.fn().mockResolvedValue(DECISION_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
 
-    const res = await provider.handleToolCall('ris:get', { content_url: 'https://x/d.html', section: 'Rn 5' });
+    const res = await provider.handleToolCall('ris_get', {
+      content_url: 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
+      section: 'Rn 5',
+    });
     const t = text(res);
     expect(t).toContain('[Rn. 5]{.rn}');
     expect(t).not.toContain('[Rn. 4]{.rn}');
@@ -307,7 +322,10 @@ describe('RisProvider', () => {
     const fetchHtml = vi.fn().mockResolvedValue(DECISION_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
 
-    const res = await provider.handleToolCall('ris:get', { content_url: 'https://x/d.html', section: 'Spruch' });
+    const res = await provider.handleToolCall('ris_get', {
+      content_url: 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
+      section: 'Spruch',
+    });
     expect(text(res)).toContain('# Spruch');
     expect(text(res)).toContain('Revision wird zurückgewiesen');
   });
@@ -315,11 +333,13 @@ describe('RisProvider', () => {
   it('section and save_path compose — saves the extracted section, not the whole document', async () => {
     const fetchHtml = vi.fn().mockResolvedValue(DECISION_HTML);
     const provider = new RisProvider(clientStub({ fetchHtml }));
-    const dir = await mkdtemp(join(tmpdir(), 'ris-get-'));
+    const exportRoot = join(process.env.GLMCP_STATE_DIR!, 'exports');
+    await mkdir(exportRoot, { recursive: true });
+    const dir = await mkdtemp(join(exportRoot, 'ris-get-'));
     const path = join(dir, 'rn5.md');
     try {
-      const res = await provider.handleToolCall('ris:get', {
-        content_url: 'https://x/d.html',
+      const res = await provider.handleToolCall('ris_get', {
+        content_url: 'https://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
         section: 'Rn 5',
         save_path: path,
       });
@@ -333,15 +353,28 @@ describe('RisProvider', () => {
     }
   });
 
-  it('errors when ris:get has neither content_url nor id+applikation', async () => {
+  it('errors when ris_get has neither content_url nor id+applikation', async () => {
     const provider = new RisProvider(clientStub());
-    const res = await provider.handleToolCall('ris:get', {});
+    const res = await provider.handleToolCall('ris_get', {});
     expect(res.isError).toBe(true);
+  });
+
+  it.each([
+    'http://www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
+    'https://127.0.0.1/private',
+    'https://169.254.169.254/latest/meta-data/',
+    'https://user:password@www.ris.bka.gv.at/Dokumente/Justiz/JJT_1/JJT_1.html',
+    'https://www.ris.bka.gv.at/Dokumente/Justiz/%2e%2e/private.html',
+  ])('rejects unsafe ris_get content_url %s before fetching', async (content_url) => {
+    const fetchHtml = vi.fn();
+    const provider = new RisProvider(clientStub({ fetchHtml }));
+    await expect(provider.handleToolCall('ris_get', { content_url })).rejects.toThrow(/network policy/);
+    expect(fetchHtml).not.toHaveBeenCalled();
   });
 
   it('errors on an unknown tool', async () => {
     const provider = new RisProvider(clientStub());
-    const res = await provider.handleToolCall('ris:bogus', {});
+    const res = await provider.handleToolCall('ris_bogus', {});
     expect(res.isError).toBe(true);
   });
 });

@@ -4,6 +4,8 @@ import TurndownService from 'turndown';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import type { DecisionAdapter, DecisionEntry, DecisionPage, DecisionSearchResult } from '../types.js';
 import type { Element } from 'domhandler';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { RII_NRW_DOCUMENT_POLICY, RII_NRW_SEARCH_POLICY } from '../network-policy.js';
 
 const BASE = 'https://nrwesuche.justiz.nrw.de';
 
@@ -19,23 +21,44 @@ const turndown = new TurndownService({ headingStyle: 'atx' });
 
 interface NrwHit { url: string; title: string; court: string; kind: string; fileNumber: string; ecli: string; date: string; norms: string; headnotes: string; }
 
+const NRW_HIT_LABELS = [
+  'Gericht',
+  'Entscheidungsart',
+  'Aktenzeichen',
+  'ECLI',
+  'Entscheidungsdatum',
+  'Normen',
+  'Leitsätze',
+] as const;
+type NrwHitLabel = typeof NRW_HIT_LABELS[number];
+
+function hitValue(text: string, label: NrwHitLabel): string {
+  const marker = `${label}:`;
+  const markerIndex = text.indexOf(marker);
+  if (markerIndex < 0) return '';
+  const valueStart = markerIndex + marker.length;
+  const nextMarker = NRW_HIT_LABELS
+    .filter((candidate) => candidate !== label)
+    .map((candidate) => text.indexOf(`${candidate}:`, valueStart))
+    .filter((index) => index >= 0)
+    .reduce((earliest, index) => Math.min(earliest, index), text.length);
+  const value = text.slice(valueStart, nextMarker).trim();
+  return label === 'ECLI' && value ? `ECLI:${value}` : value;
+}
+
 function parseHit(el: Element, $: cheerio.CheerioAPI): NrwHit {
   const node = $(el);
   const text = node.text().replace(/\s+/g, ' ').trim();
-  const value = (label: string): string => {
-    if (label === 'ECLI') return text.match(/ECLI:\s*([A-Z0-9:.]+?)(?=Entscheidungsdatum|Normen|Leitsätze|$)/i)?.[1]?.trim() || '';
-    return text.match(new RegExp(`${label}:\\s*(.*?)(?=\\s+(?:Gericht|Entscheidungsart|Aktenzeichen|ECLI|Entscheidungsdatum|Normen|Leitsätze):|$)`))?.[1]?.trim() || '';
-  };
   return {
     url: node.find('a').attr('href') || '',
     title: node.find('a').text().trim(),
-    court: value('Gericht'),
-    kind: value('Entscheidungsart'),
-    fileNumber: value('Aktenzeichen'),
-    ecli: value('ECLI'),
-    date: value('Entscheidungsdatum'),
-    norms: value('Normen'),
-    headnotes: value('Leitsätze'),
+    court: hitValue(text, 'Gericht'),
+    kind: hitValue(text, 'Entscheidungsart'),
+    fileNumber: hitValue(text, 'Aktenzeichen'),
+    ecli: hitValue(text, 'ECLI'),
+    date: hitValue(text, 'Entscheidungsdatum'),
+    norms: hitValue(text, 'Normen'),
+    headnotes: hitValue(text, 'Leitsätze'),
   };
 }
 
@@ -61,7 +84,7 @@ export class NRWDecisionAdapter implements DecisionAdapter {
     // The pager is a row of submit buttons named page1..pageN; naming one picks
     // that page.
     if (page > 1) params.set(`page${page}`, String(page));
-    const response = await this.http.post<string>(`${BASE}/index.php`, params.toString(), {
+    const response = await safeAxiosPost<string>(this.http, `${BASE}/index.php`, params.toString(), RII_NRW_SEARCH_POLICY, {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': HTTP_USER_AGENT },
     });
     const $ = cheerio.load(response.data);
@@ -71,7 +94,9 @@ export class NRWDecisionAdapter implements DecisionAdapter {
   }
 
   async get(_source: string, id: string): Promise<DecisionEntry> {
-    const response = await this.http.get<string>(id, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, id, RII_NRW_DOCUMENT_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const fields: Record<string, string> = {};
     $('.feldbezeichnung').each((_, el) => { fields[$(el).text().trim().replace(/:$/, '').toLowerCase()] = $(el).next('.feldinhalt').text().trim(); });

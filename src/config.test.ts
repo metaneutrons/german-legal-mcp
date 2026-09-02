@@ -7,6 +7,7 @@ import {
   readBooleanEnv,
   readEnumEnv,
   readIntegerEnv,
+  getLogLevel,
   readStringEnv,
   readUrlEnv,
   redactEnvironment,
@@ -40,6 +41,13 @@ describe('configuration environment parsing', () => {
       .toThrow('COUNT must be at least 0');
     expect(() => readUrlEnv('URL', { URL: 'not a url' }))
       .toThrow(ConfigurationError);
+  });
+
+  it('accepts only supported structured log levels', () => {
+    expect(getLogLevel({ GLMCP_LOG_LEVEL: 'debug' })).toBe('debug');
+    expect(getLogLevel({ LOG_LEVEL: 'warn' })).toBe('warn');
+    expect(() => getLogLevel({ GLMCP_LOG_LEVEL: 'verbose' }))
+      .toThrow('GLMCP_LOG_LEVEL must be one of');
   });
 
   it('redacts catalogued secrets', () => {

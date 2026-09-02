@@ -3,6 +3,8 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import type { DecisionAdapter, DecisionEntry, DecisionPage, DecisionSearchResult } from '../types.js';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { RII_BRANDENBURG_POLICY } from '../network-policy.js';
 
 const BASE = 'https://gerichtsentscheidungen.brandenburg.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
@@ -28,7 +30,10 @@ export class BrandenburgDecisionAdapter implements DecisionAdapter {
    * source fills it. `get` reads it from the detail page's metadata table.
    */
   async searchPage(_source: string, query: string, limit: number, page = 1): Promise<DecisionPage> {
-    const response = await this.http.get<string>(`${BASE}/suche`, { params: { input_fulltext: query, ...(page > 1 ? { page: String(page) } : {}) }, headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, `${BASE}/suche`, RII_BRANDENBURG_POLICY, {
+      params: { input_fulltext: query, ...(page > 1 ? { page: String(page) } : {}) },
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const results = $('#resultlist tbody tr').slice(0, limit).map((_, el) => {
       const cells = $(el).find('td');
@@ -40,7 +45,9 @@ export class BrandenburgDecisionAdapter implements DecisionAdapter {
 
   async get(_source: string, id: string): Promise<DecisionEntry> {
     const url = `${BASE}/gerichtsentscheidung/${id}`;
-    const response = await this.http.get<string>(url, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, url, RII_BRANDENBURG_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const metadata: Record<string, string> = {};
     $('#metadata th').each((_, el) => { metadata[$(el).text().replace(/\s+/g, ' ').trim().toLowerCase()] = $(el).next('td').text().replace(/\s+/g, ' ').trim(); });

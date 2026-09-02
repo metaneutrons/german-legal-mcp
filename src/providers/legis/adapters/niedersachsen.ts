@@ -4,6 +4,8 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { rootLogger } from '../../../shared/logger.js';
 import type { LegisAdapter, SearchResult, LegisEntry, TocEntry } from '../types.js';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { LEGIS_NIEDERSACHSEN_POLICY } from '../network-policy.js';
 
 const logger = rootLogger.child({ module: 'ni-adapter' });
 const BASE = 'https://voris.wolterskluwer-online.de';
@@ -13,8 +15,8 @@ export class NiedersachsenAdapter implements LegisAdapter {
   readonly states = ['NI'] as const;
 
   async search(_state: string, query: string, limit: number): Promise<SearchResult[]> {
-    logger.info('Searching NI-VORIS', { query });
-    const { data } = await axios.get<string>(`${BASE}/search`, {
+    logger.info('Searching NI-VORIS', { queryLength: query.length });
+    const { data } = await safeAxiosGet<string>(axios, `${BASE}/search`, LEGIS_NIEDERSACHSEN_POLICY, {
       params: { query },
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
@@ -42,7 +44,7 @@ export class NiedersachsenAdapter implements LegisAdapter {
   async get(_state: string, id: string): Promise<LegisEntry> {
     logger.info('Fetching NI-VORIS document', { id });
     const url = `${BASE}/browse/document/${id}`;
-    const { data } = await axios.get<string>(url, {
+    const { data } = await safeAxiosGet<string>(axios, url, LEGIS_NIEDERSACHSEN_POLICY, {
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
 
@@ -65,7 +67,7 @@ export class NiedersachsenAdapter implements LegisAdapter {
   }
 
   async toc(_state: string, id: string): Promise<TocEntry[]> {
-    const { data } = await axios.get<string>(`${BASE}/browse/document/${id}`, {
+    const { data } = await safeAxiosGet<string>(axios, `${BASE}/browse/document/${id}`, LEGIS_NIEDERSACHSEN_POLICY, {
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
     const $ = cheerio.load(data);

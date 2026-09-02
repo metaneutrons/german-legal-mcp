@@ -17,6 +17,7 @@ src/
 tests/
 docs/
 vitest.config.ts
+vitest.state.ts
 tsconfig.json
 
 # Generated

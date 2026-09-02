@@ -5,7 +5,7 @@ import { z } from 'zod';
  * Used by providers to declare their available tools.
  */
 export interface ToolDefinition {
-  /** Unique tool identifier with provider prefix (e.g., 'legis:get') */
+  /** Unique tool identifier with provider prefix (e.g., 'legis_get') */
   name: string;
   /** Human-readable description for MCP clients */
   description: string;
@@ -24,10 +24,16 @@ export interface ToolResult {
   isError?: boolean;
 }
 
+export interface ToolCallContext {
+  /** MCP request cancellation, forwarded through the registry boundary. */
+  readonly signal?: AbortSignal;
+}
+
 /** Standard handler contract shared by providers and provider-local adapters. */
 export type ToolHandler = (
   toolName: string,
   args: Record<string, unknown>,
+  context?: ToolCallContext,
 ) => Promise<ToolResult>;
 
 /** Factory contract used by the provider registry and provider entry points. */
@@ -61,7 +67,7 @@ export interface Provider {
 
   /**
    * Handles a tool call. toolName includes the provider prefix.
-   * @param toolName - Full tool name including prefix (e.g., 'legis:get')
+   * @param toolName - Full tool name including prefix (e.g., 'legis_get')
    * @param args - Tool arguments as key-value pairs
    * @returns Promise resolving to the tool result
    */

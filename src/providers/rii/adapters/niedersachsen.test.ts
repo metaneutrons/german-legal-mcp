@@ -32,7 +32,7 @@ describe('NiedersachsenDecisionAdapter', () => {
           + '<p class="egal-search-result-item-extra">Entscheidungsdatum: 29.05.2026</p></div>',
       }),
     });
-    // rii:search renders an `az` column; NI left it empty while the number sat
+    // rii_search renders an `az` column; NI left it empty while the number sat
     // in the heading. The court, date and number also come back out of the
     // title, which has its own width budget to spend on the subject.
     await expect(adapter.search('NI', 'Schadensersatz', 1)).resolves.toMatchObject([{
@@ -58,6 +58,23 @@ describe('NiedersachsenDecisionAdapter', () => {
 
     await expect(adapter.get('NI', 'ni-current')).resolves.toMatchObject({
       title: 'Datenschutzrechtliche Entscheidung',
+      court: 'OVG Niedersachsen',
+      date: '03.08.2026',
+      fileNumber: '11 LA 42/26',
+      ecli: 'ECLI:DE:OVGNI:2026:0803.11LA42.26.00',
+    });
+  });
+
+  it('parses legacy field labels case-insensitively with optional colons', async () => {
+    const html = '<html><body><h1>Legacy-Entscheidung</h1>'
+      + '<div class="field">gericht OVG Niedersachsen</div>'
+      + '<div class="views-field">Entscheidungsdatum: 03.08.2026</div>'
+      + '<div class="field">AKTENZEICHEN : 11 LA 42/26</div>'
+      + '<div class="views-field">ecli ECLI:DE:OVGNI:2026:0803.11LA42.26.00</div>'
+      + '<div class="wkde-document-body"><p>Volltext</p></div></body></html>';
+    const adapter = new NiedersachsenDecisionAdapter({ get: async () => ({ data: html }) });
+
+    await expect(adapter.get('NI', 'ni-legacy')).resolves.toMatchObject({
       court: 'OVG Niedersachsen',
       date: '03.08.2026',
       fileNumber: '11 LA 42/26',

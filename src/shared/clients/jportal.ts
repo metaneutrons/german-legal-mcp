@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { rootLogger } from '../logger.js';
+import { safeAxiosPost, type NetworkPolicy } from '../network-policy.js';
 
 const logger = rootLogger.child({ module: 'jportal-client' });
 
@@ -35,6 +36,23 @@ export interface JPortalDocument {
   permalink: string;
 }
 
+interface JPortalInitResponse {
+  csrfToken?: string;
+  user?: { login?: unknown };
+}
+
+interface JPortalSearchResponse {
+  resultList?: Array<Record<string, unknown>>;
+  hits?: unknown;
+}
+
+interface JPortalDocumentResponse {
+  documentTitle?: { title?: string };
+  head?: string;
+  text?: string;
+  permalink?: string;
+}
+
 const PORTALS: Record<string, JPortalConfig> = {
   BW: { portalId: 'bsbw', domain: 'www.landesrecht-bw.de' },
   BE: { portalId: 'bsbe', domain: 'gesetze.berlin.de' },
@@ -56,6 +74,16 @@ function baseUrl(domain: string): string {
   return `https://${domain}/jportal/wsrest/recherche3`;
 }
 
+function jportalPolicy(domain: string): NetworkPolicy {
+  return {
+    name: `jportal ${domain}`,
+    rules: [{
+      hostname: domain,
+      paths: [/^\/jportal\/wsrest\/recherche3\/(?:init|search|document)$/],
+    }],
+  };
+}
+
 async function getSession(state: string): Promise<JPortalSession> {
   const existing = sessions.get(state);
   if (existing) return existing;
@@ -65,13 +93,15 @@ async function getSession(state: string): Promise<JPortalSession> {
 
   logger.info('Initializing jportal session', { state, portalId: config.portalId });
 
-  const response = await axios.post(
+  const response = await safeAxiosPost<JPortalInitResponse>(
+    axios,
     `${baseUrl(config.domain)}/init`,
     {
       clientID: config.portalId,
       clientVersion: `${config.portalId} - V08_28_00`,
       r3ID: new Date().toISOString(),
     },
+    jportalPolicy(config.domain),
     {
       headers: {
         'Content-Type': 'application/json',
@@ -132,7 +162,8 @@ export async function jportalSearch(
   limit: number,
 ): Promise<JPortalSearchResult[]> {
   return withRetry(state, async (session) => {
-    const response = await axios.post(
+    const response = await safeAxiosPost<JPortalSearchResponse>(
+      axios,
       `${baseUrl(session.domain)}/search`,
       {
         clientID: session.portalId,
@@ -145,10 +176,11 @@ export async function jportalSearch(
           NUMBER_HITS: {},
         },
       },
+      jportalPolicy(session.domain),
       { headers: sessionHeaders(session) },
     );
 
-    const results: JPortalSearchResult[] = (response.data.resultList || []).map(
+    const results: JPortalSearchResult[] = (response.data.resultList ?? []).map(
       (r: Record<string, unknown>) => ({
         docId: r.docId as string,
         title: ((r.titleList as string[]) || [])[0] || '',
@@ -181,7 +213,7 @@ export interface JPortalDecisionPage {
  * `subtitleList.length === 3` in 80 of 80, a digit in `titleList[1]` in 80 of
  * 80, and a recognizable decision type in `subtitleList[0]` in 79 of 80.
  *
- * Taking `titleList[0]` as the title is therefore why `rii:search` rendered an
+ * Taking `titleList[0]` as the title is therefore why `rii_search` rendered an
  * empty `court` and `az` for all ten of these jurisdictions while the court
  * name sat in the title column — and why the file number was dropped outright.
  * Positions are read defensively even so: a portal that returns fewer parts
@@ -215,7 +247,8 @@ export async function jportalDecisionSearch(
   start = 1,
 ): Promise<JPortalDecisionPage> {
   return withRetry(state, async (session) => {
-    const response = await axios.post(
+    const response = await safeAxiosPost<JPortalSearchResponse>(
+      axios,
       `${baseUrl(session.domain)}/search`,
       {
         clientID: session.portalId,
@@ -228,12 +261,13 @@ export async function jportalDecisionSearch(
           NUMBER_HITS: {},
         },
       },
+      jportalPolicy(session.domain),
       { headers: sessionHeaders(session) },
     );
 
     const total = response.data.hits;
     return {
-      results: (response.data.resultList || []).map(decisionResult),
+      results: (response.data.resultList ?? []).map(decisionResult),
       // -1 is the portal's "not counted" marker, seen on the per-word `hits`.
       ...(typeof total === 'number' && total >= 0 ? { totalHits: total } : {}),
     };
@@ -246,7 +280,8 @@ export async function jportalGetDocument(
   docPart = 'S',
 ): Promise<JPortalDocument> {
   return withRetry(state, async (session) => {
-    const response = await axios.post(
+    const response = await safeAxiosPost<JPortalDocumentResponse>(
+      axios,
       `${baseUrl(session.domain)}/document`,
       {
         clientID: session.portalId,
@@ -256,6 +291,7 @@ export async function jportalGetDocument(
         docPart,
         format: 'xsl',
       },
+      jportalPolicy(session.domain),
       { headers: sessionHeaders(session) },
     );
 

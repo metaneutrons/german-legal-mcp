@@ -14,6 +14,7 @@ import { RisClient, type RisNormOptions, type RisSearchOptions } from './client.
 import { risHtmlToMarkdown } from './converter.js';
 import { parseToc } from './toc.js';
 import type { RisApplication, RisSearchHit } from './types.js';
+import { assertRisDocumentUrl, buildRisDocumentUrl } from './network-policy.js';
 
 export type RisReference = CaseLawReference | LegislationReference;
 
@@ -171,7 +172,7 @@ export class RisDataClient implements
         : {}),
     });
     if (!source) throw new Error(`Could not resolve RIS table of contents for "${reference.title}".`);
-    const entries = parseToc(await this.fetchHtml(source.url, 90_000));
+    const entries = parseToc(await this.fetchHtml(assertRisDocumentUrl(source.url), 90_000));
     return {
       reference,
       origin: 'native',
@@ -304,12 +305,7 @@ function sourceSegment(sourceId: string): string {
 }
 
 function directDocumentUrl(application: string, id: string): string {
-  const folder = application === 'BrKons'
-    ? 'Bundesnormen'
-    : application === 'LrKons'
-      ? 'Landesnormen'
-      : application;
-  return `https://www.ris.bka.gv.at/Dokumente/${folder}/${id}/${id}.html`;
+  return buildRisDocumentUrl(application, id);
 }
 
 function assertReference(reference: RisReference): void {

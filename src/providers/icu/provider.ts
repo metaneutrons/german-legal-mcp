@@ -7,6 +7,7 @@ import { validateConversion } from '../../shared/converter.js';
 import { saveToFile } from '../../shared/save-to-file.js';
 import { icuTools } from './tools/index.js';
 import { IcuDataClient } from './data-client.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
 
 const logger = rootLogger.child({ module: 'icu-provider' });
 
@@ -28,8 +29,9 @@ export class IcuProvider implements Provider {
   }
 
   async handleToolCall(toolName: string, args: Record<string, unknown>): Promise<ToolResult> {
-    if (toolName === 'icu:search') return this.handleSearch(args);
-    if (toolName === 'icu:get_document') return this.handleGetDocument(args);
+    const canonicalName = normalizeToolName(toolName);
+    if (canonicalName === 'icu_search') return this.handleSearch(args);
+    if (canonicalName === 'icu_get_document') return this.handleGetDocument(args);
     return { content: [{ type: 'text', text: `Unknown tool: ${toolName}` }], isError: true };
   }
 
@@ -40,7 +42,7 @@ export class IcuProvider implements Provider {
   private async handleSearch(args: Record<string, unknown>): Promise<ToolResult> {
     const { query, language = 'DE', limit = 10 } = args as { query: string; language?: string; limit?: number };
 
-    logger.info('Searching InfoCuria', { query, language });
+    logger.info('Searching InfoCuria', { queryLength: query.length, language });
 
     const response = await this.client.searchCaseLaw(query, language, limit);
     const markdown = response.hits.map((c, i) => {

@@ -28,20 +28,37 @@ function http() {
 describe('RiiProvider', () => {
   it('searches and retrieves federal decisions through injected HTTP', async () => {
     const provider = new RiiProvider(http(), new RiiConverter());
-    await expect(provider.handleToolCall('rii:search', {
+    await expect(provider.handleToolCall('rii_search', {
       query: 'copyright',
       source: 'BUND',
     })).resolves.toMatchObject({
       content: [{ text: expect.stringContaining('case-1') }],
     });
-    await expect(provider.handleToolCall('rii:get_decision', {
+    await expect(provider.handleToolCall('rii_get_decision', {
       doc_id: 'case-1',
       source: 'BUND',
     })).resolves.toMatchObject({
       content: [{ text: expect.stringContaining('Decision text') }],
     });
-    await expect(provider.handleToolCall('rii:unknown', {}))
+    await expect(provider.handleToolCall('rii_unknown', {}))
       .resolves.toMatchObject({ isError: true });
+  });
+
+  it.each([
+    ['NW', 'http://nrwe.justiz.nrw.de/example.html'],
+    ['NW', 'https://127.0.0.1/internal.html'],
+    ['NW', 'https://169.254.169.254/latest/meta-data/'],
+    ['NW', 'https://user:secret@nrwe.justiz.nrw.de/example.html'],
+    ['HB', 'https://www.verwaltungsgericht.bremen.de/entscheidungen/%2e%2e/private'],
+    ['BUND', '../private'],
+  ])('rejects unsafe %s document id %s before adapter dispatch', async (source, doc_id) => {
+    const get = vi.fn();
+    const adapter: DecisionAdapter = { sources: [source], search: vi.fn(), get };
+    const provider = new RiiProvider(http(), new RiiConverter(), [adapter]);
+
+    await expect(provider.handleToolCall('rii_get_decision', { source, doc_id }))
+      .rejects.toThrow(/network policy|opaque identifier/);
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('consolidates ALL sources in parallel, deduplicates, and isolates portal failures', async () => {
@@ -52,7 +69,7 @@ describe('RiiProvider', () => {
       { sources: ['SH'], search: async () => [{ id: 'same', title: 'VwVfG Entscheidung', subtitle: 'SH', date: '2024', court: 'VG', fileNumber: '1 A 1/24' }], get: vi.fn() },
     ];
     const provider = new RiiProvider(http(), new RiiConverter(), adapters);
-    const search = await provider.handleToolCall('rii:search', { query: 'VwVfG', source: 'ALL', limit: 10 });
+    const search = await provider.handleToolCall('rii_search', { query: 'VwVfG', source: 'ALL', limit: 10 });
     const text = (search.content[0] as { text: string }).text;
     const rows = text.split('\n').slice(text.split('\n').indexOf('src\tdate\tcourt\taz\tecli\ttitle\tdocId') + 1);
 
@@ -63,7 +80,7 @@ describe('RiiProvider', () => {
     expect(text).toContain('1 portal(s) unavailable: BY');
     expect(text).toContain('2 of 4 portals: BUND 1 · NW 1');
 
-    await expect(provider.handleToolCall('rii:get_decision', { doc_id: 'same', source: 'ALL' })).resolves.toMatchObject({ isError: true });
+    await expect(provider.handleToolCall('rii_get_decision', { doc_id: 'same', source: 'ALL' })).resolves.toMatchObject({ isError: true });
   });
 
   it('asks each portal for its own page and names the ones that cannot page', async () => {
@@ -84,13 +101,13 @@ describe('RiiProvider', () => {
     };
     const provider = new RiiProvider(http(), new RiiConverter(), [pageable, unpageable]);
 
-    const first = (await provider.handleToolCall('rii:search', { query: 'x', source: 'ALL', limit: 5 })
+    const first = (await provider.handleToolCall('rii_search', { query: 'x', source: 'ALL', limit: 5 })
       .then((r) => (r.content[0] as { text: string }).text));
     expect(first).toContain('bw-p1');
     expect(first).toContain('hb-1');
     expect(first).not.toContain('cannot page');
 
-    const second = (await provider.handleToolCall('rii:search', { query: 'x', source: 'ALL', limit: 5, page: 2 })
+    const second = (await provider.handleToolCall('rii_search', { query: 'x', source: 'ALL', limit: 5, page: 2 })
       .then((r) => (r.content[0] as { text: string }).text));
     expect(second).toContain('bw-p2');
     // Bremen's single page must not reappear on page 2.
@@ -120,7 +137,7 @@ describe('RiiProvider', () => {
 
     // collapse_duplicates off: these fixtures differ only in a trailing number,
     // so clustering would legitimately fold them and mask what is under test.
-    const result = await provider.handleToolCall('rii:search', {
+    const result = await provider.handleToolCall('rii_search', {
       query: 'Schadensersatz', source: 'ALL', limit: 9, collapse_duplicates: false,
     });
     const text = (result.content[0] as { text: string }).text;
@@ -156,7 +173,7 @@ describe('RiiProvider', () => {
     const provider = new RiiProvider(http(), new RiiConverter(), [adapter]);
 
     const text = await provider
-      .handleToolCall('rii:search', { query: 'Landesarbeitsgericht Kündigung', source: 'ALL', limit: 2 })
+      .handleToolCall('rii_search', { query: 'Landesarbeitsgericht Kündigung', source: 'ALL', limit: 2 })
       .then((r) => (r.content[0] as { text: string }).text);
     const rows = text.split('\n');
     const header = rows.indexOf('src\tdate\tcourt\taz\tecli\ttitle\tdocId');

@@ -3,9 +3,19 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import type { DecisionAdapter, DecisionEntry, DecisionPage, DecisionSearchResult } from '../types.js';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { RII_NIEDERSACHSEN_POLICY } from '../network-policy.js';
 
 const BASE = 'https://voris.wolterskluwer-online.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
+
+function labelledValue(text: string, normalizedText: string, label: string): string | undefined {
+  const offset = normalizedText.indexOf(label.toLocaleLowerCase('de-DE'));
+  if (offset < 0) return undefined;
+  const remainder = text.slice(offset + label.length).trimStart();
+  const value = (remainder.startsWith(':') ? remainder.slice(1) : remainder).trim();
+  return value || undefined;
+}
 
 /**
  * NI reports counts per facet rather than one overall figure. The search filters
@@ -25,7 +35,7 @@ export function parseNiedersachsenTotalHits(html: string): number | undefined {
  * the three-part form (no subject) also occurs and is what the stored fixture
  * carries.
  *
- * Only the court was being recovered, so `rii:search` rendered an empty `az`
+ * Only the court was being recovered, so `rii_search` rendered an empty `az`
  * for this source while the file number sat in plain sight inside the title —
  * and the court, date and file number each ate into the title column's width
  * despite having columns of their own.
@@ -96,7 +106,7 @@ export class NiedersachsenDecisionAdapter implements DecisionAdapter {
   async searchPage(_source: string, query: string, limit: number, page = 1): Promise<DecisionPage> {
     let response;
     try {
-      response = await this.http.get<string>(`${BASE}/search`, {
+      response = await safeAxiosGet<string>(this.http, `${BASE}/search`, RII_NIEDERSACHSEN_POLICY, {
         params: { query, pit: 'in_force', publicationtype: 'publicationform-ats-filter!ATS_Rechtsprechung', ...(page > 1 ? { page: String(page) } : {}) },
         headers: { 'User-Agent': HTTP_USER_AGENT },
       });
@@ -132,7 +142,9 @@ export class NiedersachsenDecisionAdapter implements DecisionAdapter {
 
   async get(_source: string, id: string): Promise<DecisionEntry> {
     const url = `${BASE}/browse/document/${id}`;
-    const response = await this.http.get<string>(url, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, url, RII_NIEDERSACHSEN_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const title = $('.wkde-doctitle, h1').first().text().replace(/\s+/g, ' ').trim()
       || $('title').text().replace(/\s*\|.*$/, '').trim();
@@ -144,8 +156,9 @@ export class NiedersachsenDecisionAdapter implements DecisionAdapter {
     });
     $('.views-field, .field').each((_, el) => {
       const text = $(el).text().replace(/\s+/g, ' ').trim();
+      const normalizedText = text.toLocaleLowerCase('de-DE');
       for (const label of ['Gericht', 'Entscheidungsdatum', 'Aktenzeichen', 'ECLI']) {
-        const value = text.match(new RegExp(`${label}:?\\s*(.+)$`, 'i'))?.[1];
+        const value = labelledValue(text, normalizedText, label);
         if (value) metadata[label.toLowerCase()] = value;
       }
     });

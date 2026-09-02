@@ -3,10 +3,18 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { rootLogger } from '../logger.js';
+import { safeAxiosGet, type NetworkPolicy } from '../network-policy.js';
 
 const logger = rootLogger.child({ module: 'gii-client' });
 
 const BASE_URL = 'https://www.gesetze-im-internet.de';
+const GII_POLICY: NetworkPolicy = {
+  name: 'GII documents',
+  rules: [{
+    hostname: 'www.gesetze-im-internet.de',
+    paths: [/^\/[A-Za-z0-9._+-]+\/__[A-Za-z0-9ÄÖÜäöüß._%+-]+\.html$/],
+  }],
+};
 
 const turndown = new TurndownService({
   headingStyle: 'atx',
@@ -47,7 +55,7 @@ export async function giiGetLegislation(law: string, section: string): Promise<G
   logger.info('Fetching legislation', { law, section, url });
 
   try {
-    const response = await axios.get(url, {
+    const response = await safeAxiosGet<ArrayBuffer>(axios, url, GII_POLICY, {
       headers: { 'User-Agent': HTTP_USER_AGENT },
       responseType: 'arraybuffer',
     });

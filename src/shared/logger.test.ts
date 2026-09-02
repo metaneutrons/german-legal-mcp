@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import pino from 'pino';
-import { LOG_REDACT_CONFIG, SENSITIVE_LOG_KEYS, sanitizeUrl } from './logger.js';
+import {
+  LOG_REDACT_CONFIG,
+  SENSITIVE_LOG_KEYS,
+  sanitizeLogContext,
+  sanitizeLogText,
+  sanitizeUrl,
+} from './logger.js';
 
 /**
  * Drives a pino logger with the exact redaction config the real logger uses,
@@ -36,8 +42,8 @@ describe('sanitizeUrl', () => {
   });
 
   it('strips inline userinfo from non-parseable strings without throwing', () => {
-    // Protocol-relative URL: `new URL()` throws, so the regex fallback runs.
-    expect(sanitizeUrl('//admin:hunter2@host/path')).toBe('//[redacted]@host/path');
+    // Protocol-relative URL: `new URL()` needs a temporary scheme.
+    expect(sanitizeUrl('//admin:hunter2@host/path')).toBe('//host/path');
   });
 
   it('strips userinfo even from exotic but parseable schemes', () => {
@@ -51,6 +57,54 @@ describe('sanitizeUrl', () => {
 
   it('returns empty/non-strings unchanged', () => {
     expect(sanitizeUrl('')).toBe('');
+  });
+
+  it('redacts a nested qurl carrying OIDC credentials while preserving the outer route', () => {
+    const nested = 'https://oidc-user:oidc-pass@idp.example/callback?code=OIDC-CODE&id_token=OIDC-TOKEN';
+    const out = sanitizeUrl(
+      `https://login.example/sign-in?qurl=${encodeURIComponent(nested)}&document=bgb.p823`,
+    );
+
+    expect(out).toContain('https://login.example/sign-in');
+    expect(out).toContain('document=bgb.p823');
+    expect(out).toContain('qurl=%5Bredacted%5D');
+    expect(out).not.toContain('oidc-user');
+    expect(out).not.toContain('oidc-pass');
+    expect(out).not.toContain('OIDC-CODE');
+    expect(out).not.toContain('OIDC-TOKEN');
+  });
+
+  it('fails closed for multiply encoded nested URLs and encoded parameter names', () => {
+    const target = 'https://nested-user:nested-pass@example.invalid/cb?token=NESTED-TOKEN';
+    const multiplyEncoded = encodeURIComponent(encodeURIComponent(encodeURIComponent(target)));
+    const encodedQurlName = 'q%2575rl';
+    const out = sanitizeUrl(
+      `https://login.example/?${encodedQurlName}=${multiplyEncoded}`,
+    );
+
+    expect(out).toContain('%5Bredacted%5D');
+    expect(out).not.toContain('nested-user');
+    expect(out).not.toContain('nested-pass');
+    expect(out).not.toContain('NESTED-TOKEN');
+  });
+
+  it('redacts URL- and query-like values even under an unknown wrapper parameter', () => {
+    const nestedQuery = encodeURIComponent('code=INNER-CODE&access_token=INNER-TOKEN');
+    const out = sanitizeUrl(`https://example.com/redirect?payload=${nestedQuery}&step=2`);
+
+    expect(out).toContain('payload=%5Bredacted%5D');
+    expect(out).toContain('step=2');
+    expect(out).not.toContain('INNER-CODE');
+    expect(out).not.toContain('INNER-TOKEN');
+  });
+
+  it('redacts oversized URLs without parsing or copying attacker-controlled content', () => {
+    const out = sanitizeUrl(
+      `https://example.com/?qurl=${'x'.repeat(20_000)}OVERSIZED-SECRET`,
+    );
+
+    expect(out).toBe('[redacted:oversized-url]');
+    expect(out).not.toContain('OVERSIZED-SECRET');
   });
 });
 
@@ -80,6 +134,54 @@ describe('logger redaction', () => {
     expect(error.message).toBe('boom'); // non-sensitive sibling preserved
   });
 
+  it('redacts provider-specific and future token-suffixed keys', () => {
+    const context = sanitizeLogContext({
+      octaToken: 'octa-secret',
+      xSHISecurity: 'viewer-secret',
+      csrfToken: 'csrf-secret',
+      jwtCookie: 'jwt-secret',
+      unexpectedSessionToken: 'future-secret',
+    });
+    expect(JSON.stringify(context)).not.toContain('secret');
+  });
+
+  it('redacts structured qurl values instead of trusting their target URL', () => {
+    const context = sanitizeLogContext({
+      navigation: {
+        qurl: encodeURIComponent('https://u:p@example.invalid/cb?code=STRUCTURED-CODE'),
+      },
+    });
+
+    expect(context).toEqual({ navigation: { qurl: '[redacted]' } });
+    expect(JSON.stringify(context)).not.toContain('STRUCTURED-CODE');
+  });
+
+  it('bounds collection breadth and nesting depth', () => {
+    const context = sanitizeLogContext({
+      values: Array.from({ length: 1_000 }, (_, index) => `value-${index}`),
+      deep: {
+        a: {
+          b: {
+            c: {
+              d: {
+                e: {
+                  f: {
+                    g: { value: 'DEEP-SECRET' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+    const values = (context.values ?? []) as unknown[];
+
+    expect(values).toHaveLength(101);
+    expect(values.at(-1)).toBe('[truncated]');
+    expect(JSON.stringify(context)).not.toContain('DEEP-SECRET');
+  });
+
   it('sanitizes url and href values instead of dropping them', () => {
     const { raw, parsed } = captureLog({
       url: 'https://u:p@example.com/x?token=leak',
@@ -98,5 +200,56 @@ describe('logger redaction', () => {
     expect(parsed.provider).toBe('demo');
     expect(parsed.requestId).toBe('req-1');
     expect(parsed.durationMs).toBe(42);
+  });
+});
+
+describe('free-text log sanitization', () => {
+  it('removes credentials and query tokens embedded in error messages and stacks', () => {
+    const secretUrl = 'https://alice:pw@example.invalid/x?token=super-secret';
+    const out = sanitizeLogText(`request failed at ${secretUrl} password=hunter2 Bearer abc.def`);
+    expect(out).not.toContain('alice');
+    expect(out).not.toContain('pw');
+    expect(out).not.toContain('super-secret');
+    expect(out).not.toContain('hunter2');
+    expect(out).not.toContain('abc.def');
+  });
+
+  it('rescans non-sensitive URL syntax for nested sensitive assignments', () => {
+    const out = sanitizeLogText('GET https://example.test/?token=URL-SECRET failed');
+
+    expect(out).toContain('token=[redacted]');
+    expect(out).not.toContain('URL-SECRET');
+  });
+
+  it('redacts complete quoted secrets containing escaped quote characters', () => {
+    const out = sanitizeLogText(String.raw`login password="prefix\"SECRET-SUFFIX" failed`);
+
+    expect(out).toBe('login password=[redacted] failed');
+    expect(out).not.toContain('SECRET-SUFFIX');
+  });
+
+  it('sanitizes nested errors and secrets at arbitrary context depth', () => {
+    const context = sanitizeLogContext({
+      nested: {
+        deeper: {
+          password: 'hidden',
+          error: new Error('failed https://u:p@example.invalid/?token=hidden-too'),
+        },
+      },
+    });
+    expect(JSON.stringify(context)).not.toContain('hidden');
+    expect(JSON.stringify(context)).not.toContain('u:p@');
+  });
+
+  it('bounds oversized free text after sanitizing the retained diagnostic prefix', () => {
+    const nested = encodeURIComponent('https://u:p@example.invalid/cb?code=PREFIX-CODE');
+    const out = sanitizeLogText(
+      `failed https://login.example/?qurl=${nested} ${'x'.repeat(100_000)}`,
+    );
+
+    expect(out).not.toContain('PREFIX-CODE');
+    expect(out).not.toContain('u:p@');
+    expect(out).toContain('[truncated]');
+    expect(out.length).toBeLessThan(33_000);
   });
 });

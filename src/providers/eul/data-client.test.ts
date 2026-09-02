@@ -33,8 +33,11 @@ describe('EulDataClient', () => {
     });
     expect((await data.get(page.results[0]!)).content.value).toContain('Rechtstext');
     expect(transport.get).toHaveBeenCalledWith(
-      expect.stringContaining('32016R0679'),
-      expect.objectContaining({ responseType: 'text' }),
+      expect.stringContaining('/legal-content/DE/TXT/HTML/'),
+      expect.objectContaining({
+        params: { uri: 'CELEX:32016R0679' },
+        responseType: 'text',
+      }),
     );
   });
 

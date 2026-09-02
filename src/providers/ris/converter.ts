@@ -23,7 +23,7 @@ export function risHtmlToMarkdown(html: string): string {
  * RIS Judikatur decisions prefix each paragraph with a Randnummer like `[1]`
  * (which Turndown escapes to `\[1\]`). Rewrite the leading marker into a pandoc
  * `[Rn. N]{.rn}` span so callers can pull a single Randnummer surgically via
- * `ris:get section="Rn 5"`, matching the rii/icu convention.
+ * `ris_get section="Rn 5"`, matching the rii/icu convention.
  */
 function markRandnummern(markdown: string): string {
   return markdown.replace(/^[ \t]*\\?\[(\d+)\\?\]\s+/gm, '[Rn. $1]{.rn} ');

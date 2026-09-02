@@ -6,6 +6,7 @@ import { handleSearch } from './tools/search.js';
 import { handleGet } from './tools/get.js';
 import { handleSearchVorgang } from './tools/vorgang.js';
 import { handleSearchPlenarprotokoll } from './tools/plenarprotokoll.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
 
 export class DipProvider implements Provider {
   readonly name = 'dip';
@@ -20,11 +21,11 @@ export class DipProvider implements Provider {
   getTools(): ToolDefinition[] { return dipTools; }
 
   async handleToolCall(name: string, args: Record<string, unknown>): Promise<ToolResult> {
-    switch (name) {
-      case 'dip:search': return handleSearch(this.client, args);
-      case 'dip:get': return handleGet(this.client, args);
-      case 'dip:search_vorgang': return handleSearchVorgang(this.client, args);
-      case 'dip:search_plenarprotokoll': return handleSearchPlenarprotokoll(this.client, args);
+    switch (normalizeToolName(name)) {
+      case 'dip_search': return handleSearch(this.client, args);
+      case 'dip_get': return handleGet(this.client, args);
+      case 'dip_search_vorgang': return handleSearchVorgang(this.client, args);
+      case 'dip_search_plenarprotokoll': return handleSearchPlenarprotokoll(this.client, args);
       default: return { content: [{ type: 'text', text: `Unknown tool: ${name}` }], isError: true };
     }
   }

@@ -37,10 +37,10 @@ describe('DipProvider', () => {
   it('routes and formats every DIP use case', async () => {
     const provider = new DipProvider(fakeClient());
     for (const [tool, args, expected] of [
-      ['dip:search', { query: 'Recht' }, 'Gesetzentwurf'],
-      ['dip:get', { dokumentnummer: '20/1', section: 'Begründung' }, 'Begründung'],
-      ['dip:search_vorgang', { query: 'Recht' }, 'Vorgänge'],
-      ['dip:search_plenarprotokoll', { query: 'Recht' }, 'Protokolle'],
+      ['dip_search', { query: 'Recht' }, 'Gesetzentwurf'],
+      ['dip_get', { dokumentnummer: '20/1', section: 'Begründung' }, 'Begründung'],
+      ['dip_search_vorgang', { query: 'Recht' }, 'Vorgänge'],
+      ['dip_search_plenarprotokoll', { query: 'Recht' }, 'Protokolle'],
     ] as const) {
       await expect(provider.handleToolCall(tool, args)).resolves.toMatchObject({
         content: [{ text: expect.stringContaining(expected) }],
@@ -52,10 +52,10 @@ describe('DipProvider', () => {
     const client = fakeClient();
     client.searchDrucksachenText = vi.fn(async () => result([]));
     const provider = new DipProvider(client);
-    await expect(provider.handleToolCall('dip:get', {
+    await expect(provider.handleToolCall('dip_get', {
       dokumentnummer: 'missing',
     })).resolves.toMatchObject({ isError: true });
-    await expect(provider.handleToolCall('dip:unknown', {}))
+    await expect(provider.handleToolCall('dip_unknown', {}))
       .resolves.toMatchObject({ isError: true });
   });
 });

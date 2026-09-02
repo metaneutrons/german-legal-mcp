@@ -52,7 +52,7 @@ describe('JPortalDecisionAdapter', () => {
       }),
       get: async () => ({ title: '', head: '', text: '', permalink: '' }),
     });
-    // rii:search renders `court` and `az` columns. Dropping these here is what
+    // rii_search renders `court` and `az` columns. Dropping these here is what
     // left both empty for all ten jportal jurisdictions.
     await expect(adapter.search('HH', 'Kündigung', 1)).resolves.toMatchObject([{
       court: 'Landesarbeitsgericht Hamburg 3. Kammer',

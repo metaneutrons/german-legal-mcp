@@ -29,7 +29,7 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# Puppeteer / Browser artifacts
+# Local runtime artifacts
 .cache/
 .local-chromium/
 
@@ -45,6 +45,4 @@ coverage/
 # Test fixtures backup (contains copyrighted content)
 tests/fixtures.backup/
 
-#
-.kiro/settings/mcp.json
 .kiro/settings/mcp.json

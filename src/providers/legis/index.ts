@@ -10,9 +10,11 @@ import { rootLogger } from '../../shared/logger.js';
 import { saveToFile } from '../../shared/save-to-file.js';
 import { validateConversion } from '../../shared/converter.js';
 import { JPORTAL_STATES } from '../../shared/clients/jportal.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
 import { legisTools } from './tools/index.js';
 import { LegislationClient } from './client.js';
 import type { LegisAdapter, TocEntry } from './types.js';
+import { assertLegisDocumentId } from './network-policy.js';
 
 const logger = rootLogger.child({ module: 'legis' });
 
@@ -32,10 +34,11 @@ export class LegisProvider implements Provider {
     toolName: string,
     args: Record<string, unknown>,
   ): Promise<ToolResult> {
-    if (toolName === 'legis:search') return this.handleSearch(args);
-    if (toolName === 'legis:get') return this.handleGet(args);
-    if (toolName === 'legis:toc') return this.handleToc(args);
-    if (toolName === 'legis:states') return this.handleStates();
+    const canonicalName = normalizeToolName(toolName);
+    if (canonicalName === 'legis_search') return this.handleSearch(args);
+    if (canonicalName === 'legis_get') return this.handleGet(args);
+    if (canonicalName === 'legis_toc') return this.handleToc(args);
+    if (canonicalName === 'legis_states') return this.handleStates();
     return {
       content: [{ type: 'text', text: `Unknown tool: ${toolName}` }],
       isError: true,
@@ -81,7 +84,7 @@ export class LegisProvider implements Provider {
       state: string;
       save_path?: string;
     };
-    const entry = await this.client.getLegislation(state, id);
+    const entry = await this.client.getLegislation(state, assertLegisDocumentId(state, id));
     validateConversion(entry.content, `Landesrecht ${state}`);
     const markdown = `# ${entry.title}\n\n${entry.content}\n\n---\n**Source:** ${entry.url}`;
 
@@ -103,7 +106,7 @@ export class LegisProvider implements Provider {
       to?: string;
       depth?: number;
     };
-    let entries = await this.client.getTableOfContents(state, id);
+    let entries = await this.client.getTableOfContents(state, assertLegisDocumentId(state, id));
     if (depth !== undefined) {
       entries = entries.filter((entry) => entry.depth <= depth);
     }
