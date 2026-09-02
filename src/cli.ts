@@ -1,10 +1,15 @@
 import type { z } from 'zod';
 import type { ToolDefinition, ToolResult } from './shared/types.js';
 import { formatToolCallError } from './shared/errors.js';
+import {
+  isCanonicalToolName,
+  isLegacyToolName,
+  normalizeToolName,
+} from './shared/tool-names.js';
 
 /**
  * One-shot command-line access to any registered tool, bypassing the MCP
- * transport entirely. `node dist/index.js rii:search --query "..." --limit 5`
+ * transport entirely. `german-legal-mcp rii_search --query "..." --limit 5`
  * parses argv, calls the exact same `Provider.handleToolCall` an MCP client
  * would reach through JSON-RPC, and prints the same text a chat client would
  * see — nothing here is a second implementation of a tool.
@@ -49,7 +54,8 @@ function toJsonSchema(tool: ToolDefinition): JsonSchemaObject {
  */
 export function looksLikeToolInvocation(argv: readonly string[]): boolean {
   const first = argv[0];
-  return typeof first === 'string' && /^[a-z][a-z0-9_]*:[a-z][a-z0-9_]*$/.test(first);
+  return typeof first === 'string'
+    && (isCanonicalToolName(first) || isLegacyToolName(first));
 }
 
 /**
@@ -174,8 +180,10 @@ function formatToolHelp(tool: ToolDefinition): string {
 }
 
 function formatUnknownTool(tools: readonly ToolDefinition[], attempted: string): string {
-  const prefix = attempted.split(':')[0];
-  const sameProvider = tools.filter((tool) => tool.name.startsWith(`${prefix}:`));
+  const canonicalName = normalizeToolName(attempted);
+  const separator = canonicalName.indexOf('_');
+  const prefix = separator === -1 ? canonicalName : canonicalName.slice(0, separator);
+  const sameProvider = tools.filter((tool) => tool.name.startsWith(`${prefix}_`));
   const candidates = sameProvider.length > 0 ? sameProvider : tools;
   const heading = sameProvider.length > 0
     ? `Unknown tool "${attempted}". Tools under "${prefix}":`
@@ -190,16 +198,17 @@ function formatUnknownTool(tools: readonly ToolDefinition[], attempted: string):
  * code, so the caller can `process.exit(await runCli(...))` uniformly.
  */
 export async function runCli(argv: readonly string[], registry: CliRegistry): Promise<number> {
-  const [toolName, ...rest] = argv;
-  if (!toolName) {
-    process.stderr.write('A tool name is required, e.g. rii:search.\n');
+  const [attemptedName, ...rest] = argv;
+  if (!attemptedName) {
+    process.stderr.write('A tool name is required, e.g. rii_search.\n');
     return 1;
   }
 
+  const toolName = normalizeToolName(attemptedName);
   const tools = registry.getTools();
   const tool = tools.find((candidate) => candidate.name === toolName);
   if (!tool) {
-    process.stderr.write(formatUnknownTool(tools, toolName));
+    process.stderr.write(formatUnknownTool(tools, attemptedName));
     return 1;
   }
 

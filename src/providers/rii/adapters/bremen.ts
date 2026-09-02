@@ -3,6 +3,8 @@ import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import type { DecisionAdapter, DecisionEntry, DecisionPage, DecisionSearchResult } from '../types.js';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { RII_BREMEN_POLICY } from '../network-policy.js';
 
 const OVERVIEW = 'https://www.verwaltungsgericht.bremen.de/entscheidungen/entscheidungsuebersicht-13039';
 const turndown = new TurndownService({ headingStyle: 'atx' });
@@ -56,7 +58,9 @@ export class BremenDecisionAdapter implements DecisionAdapter {
    */
   async searchPage(_source: string, query: string, limit: number, page = 1): Promise<DecisionPage> {
     if (page > 1) return { results: [], pagingUnsupported: true };
-    const response = await this.http.get<string>(OVERVIEW, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, OVERVIEW, RII_BREMEN_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const needle = query.toLocaleLowerCase('de-DE');
     const results = $('tr.search-result').map((_, row) => {
@@ -83,7 +87,9 @@ export class BremenDecisionAdapter implements DecisionAdapter {
 
   async get(_source: string, id: string): Promise<DecisionEntry> {
     const url = id.startsWith('http') ? id : new URL(id, OVERVIEW).toString();
-    const response = await this.http.get<string>(url, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, url, RII_BREMEN_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const $ = cheerio.load(response.data);
     const root = $('.main_article, main, article').first();
     const title = $('h1').first().text().replace(/\s+/g, ' ').trim() || $('title').text().trim();

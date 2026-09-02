@@ -1,5 +1,13 @@
 import axios, { type AxiosInstance, type AxiosResponse } from 'axios';
 import { dipConfig } from './config.js';
+import {
+  safeAxiosGet,
+  systemHostResolver,
+  type HostResolver,
+} from '../../shared/network-policy.js';
+import { DIP_API_POLICY } from './network-policy.js';
+
+const MAX_RESPONSE_BYTES = 32 * 1024 * 1024;
 
 class DipRateLimitError extends Error {
   constructor() {
@@ -47,40 +55,65 @@ export interface DipDocument {
   deskriptor?: Array<{ name: string; typ: string }>;
 }
 
-export class DipClient {
-  private http: AxiosInstance;
+export interface DipClientOptions {
+  /** Test seam; production always uses the system resolver and pins its answers. */
+  readonly resolver?: HostResolver;
+}
 
-  constructor() {
-    this.http = axios.create({
-      baseURL: dipConfig.baseUrl,
-      params: { apikey: dipConfig.apiKey },
-      timeout: 30000,
-    });
+export class DipClient {
+  private readonly http: AxiosInstance;
+  private readonly resolver: HostResolver;
+
+  constructor(options: DipClientOptions = {}) {
+    this.resolver = options.resolver ?? systemHostResolver;
+    this.http = axios.create();
     this.http.interceptors.response.use(res => { checkRateLimit(res); return res; });
   }
 
   async searchDrucksachen(params: Record<string, string | number>): Promise<DipSearchResult> {
-    const { data } = await this.http.get<DipSearchResult>('/drucksache', { params });
+    const { data } = await this.get<DipSearchResult>('/drucksache', params);
     return data;
   }
 
   async searchDrucksachenText(params: Record<string, string | number>): Promise<DipSearchResult> {
-    const { data } = await this.http.get<DipSearchResult>('/drucksache-text', { params });
+    const { data } = await this.get<DipSearchResult>('/drucksache-text', params);
     return data;
   }
 
   async searchVorgang(params: Record<string, string | number>): Promise<DipSearchResult> {
-    const { data } = await this.http.get<DipSearchResult>('/vorgang', { params });
+    const { data } = await this.get<DipSearchResult>('/vorgang', params);
     return data;
   }
 
   async searchPlenarprotokollText(params: Record<string, string | number>): Promise<DipSearchResult> {
-    const { data } = await this.http.get<DipSearchResult>('/plenarprotokoll-text', { params });
+    const { data } = await this.get<DipSearchResult>('/plenarprotokoll-text', params);
     return data;
   }
 
   async getDrucksache(id: string): Promise<DipDocument | null> {
-    const { data } = await this.http.get<DipDocument>(`/drucksache/${id}`);
+    const { data } = await this.get<DipDocument>(`/drucksache/${encodeURIComponent(id)}`);
     return data;
+  }
+
+  private get<T>(
+    path: string,
+    params: Record<string, string | number> = {},
+  ): Promise<AxiosResponse<T>> {
+    return safeAxiosGet<T>(
+      this.http,
+      `${dipConfig.baseUrl}${path}`,
+      DIP_API_POLICY,
+      {
+        params: { ...params, apikey: dipConfig.apiKey },
+        timeout: 30_000,
+        maxRedirects: 0,
+        maxContentLength: MAX_RESPONSE_BYTES,
+        maxBodyLength: 1024 * 1024,
+      },
+      {
+        resolveDns: true,
+        resolver: this.resolver,
+      },
+    );
   }
 }

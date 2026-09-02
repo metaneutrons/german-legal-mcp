@@ -15,6 +15,14 @@ import type {
 import { EulConverter } from '../eul/converter.js';
 import { IcuConverter } from './converter.js';
 import { classifyIcuError } from './errors.js';
+import { safeAxiosGet, safeAxiosPost } from '../../shared/network-policy.js';
+import { isoDateLiteral, sparqlStringLiteral } from '../../shared/sparql.js';
+import {
+  ICU_DOCUMENT_POLICY,
+  ICU_EURLEX_POLICY,
+  ICU_SEARCH_POLICY,
+  ICU_SPARQL_POLICY,
+} from './network-policy.js';
 
 const SEARCH_URL = 'https://infocuriaws.curia.europa.eu/elastic-connector/search';
 const BLOB_URL = 'https://infocuriaws.curia.europa.eu/blob/download-file';
@@ -39,6 +47,17 @@ export interface IcuSearchHit {
   readonly celex?: string;
   readonly affairJurisdiction?: string;
   readonly logicDocId?: string;
+}
+
+interface IcuSearchResponse {
+  readonly totalHits?: number;
+  readonly searchHits?: Array<{ readonly content?: IcuSearchHit }>;
+}
+
+interface SparqlResponse {
+  readonly results?: {
+    readonly bindings?: Array<Record<string, { value?: string }>>;
+  };
 }
 
 const SPARQL_URL = 'https://publications.europa.eu/webapi/rdf/sparql';
@@ -127,18 +146,13 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
     totalHits: number;
     hits: IcuSearchHit[];
   }> {
-    const response = await this.request(() => this.http.post(SEARCH_URL, {
-      searchTerm: query,
-      multiSearchTerms: [],
-      sortTermList: [{ sortDirection: 'DESC', sortTerm: 'ALL_DATES' }],
-      pagination: { pageNumber: 0, pageSize: limit, from: 1, to: limit * 2 },
-      language: language.toUpperCase(),
-      tabName: 'tout_jurisprudence',
-      isAllTabsRequest: false,
-      isSearchExact: true,
-      searchSources: ['document', 'metadata'],
-      ecli: '', publishedId: '', usualName: '', logicDocId: '',
-    }, { headers: HEADERS }));
+    const response = await this.request(() => safeAxiosPost<IcuSearchResponse>(
+      this.http,
+      SEARCH_URL,
+      createSearchPayload(query, language, limit),
+      ICU_SEARCH_POLICY,
+      { headers: HEADERS, timeout: 30_000, maxContentLength: 10 * 1024 * 1024 },
+    ));
     return {
       totalHits: response.data.totalHits ?? 0,
       hits: (response.data.searchHits ?? []).map(
@@ -154,11 +168,15 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
     const logicDocId = await this.resolveLogicDocId(caseId, language);
     if (!logicDocId) return null;
     const numericId = logicDocId.replace('id_', '');
-    const response = await this.request(() => this.http.get<string>(
+    const response = await this.request(() => safeAxiosGet<string>(
+      this.http,
       `${BLOB_URL}/${numericId}/${language.toUpperCase()}/html`,
+      ICU_DOCUMENT_POLICY,
       {
         headers: { 'Origin': 'https://infocuria.curia.europa.eu' },
         responseType: 'text',
+        timeout: 30_000,
+        maxContentLength: 25 * 1024 * 1024,
       },
     ));
     return { logicDocId, markdown: this.converter.convert(response.data) };
@@ -244,12 +262,16 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
 
   private async fetchEurLexHtml(celex: string, language: string): Promise<string | undefined> {
     try {
-      const response = await this.http.get<string>(
+      const response = await safeAxiosGet<string>(
+        this.http,
         `${EURLEX_HTML}/${language}/TXT/HTML/`,
+        ICU_EURLEX_POLICY,
         {
           params: { uri: `CELEX:${celex}` },
           headers: { 'Accept': 'text/html, application/xhtml+xml' },
           maxRedirects: 5,
+          timeout: 30_000,
+          maxContentLength: 25 * 1024 * 1024,
           responseType: 'text',
         },
       );
@@ -288,10 +310,10 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
     const limit = Math.min(Math.max(1, request.limit ?? DEFAULT_ENUMERATION_LIMIT), MAX_ENUMERATION_LIMIT);
     const language = 'DEU';
     const sinceFilter = request.since
-      ? `FILTER(?d >= "${request.since.slice(0, 10)}"^^xsd:date)`
+      ? `FILTER(?d >= "${isoDateLiteral(request.since)}"^^xsd:date)`
       : '';
     const keyset = request.cursor
-      ? `FILTER(STR(?celex) > "${request.cursor.replace(/"/g, '')}")`
+      ? `FILTER(STR(?celex) > ${sparqlStringLiteral(request.cursor)})`
       : '';
     // Grouped, not DISTINCT. `SELECT DISTINCT` is distinct over the whole
     // tuple, so a work carrying two titles or two ECLIs emitted the same CELEX
@@ -312,10 +334,17 @@ SELECT ?celex (SAMPLE(?t) AS ?title) (MIN(?d) AS ?date) (SAMPLE(?e) AS ?ecli) WH
   FILTER(REGEX(STR(?celex), "${DECISION_CELEX_SPARQL}"))
 } GROUP BY ?celex ORDER BY ?celex LIMIT ${limit}`;
 
-    const response = await this.request(() => this.http.get(SPARQL_URL, {
+    const response = await this.request(() => safeAxiosGet<SparqlResponse>(
+      this.http,
+      SPARQL_URL,
+      ICU_SPARQL_POLICY,
+      {
       params: { query: sparql },
       headers: { 'Accept': 'application/sparql-results+json' },
-    }));
+      timeout: 30_000,
+      maxContentLength: 10 * 1024 * 1024,
+      },
+    ));
     const bindings: Record<string, { value?: string }>[] = response.data.results?.bindings ?? [];
     const results = bindings.map((binding): CaseLawReference => {
       const celex = binding.celex?.value ?? '';
@@ -375,25 +404,74 @@ SELECT ?celex (SAMPLE(?t) AS ?title) (MIN(?d) AS ?date) (SAMPLE(?e) AS ?ecli) WH
   }
 
   private async searchLogicDocId(celex: string, language: string): Promise<string | null> {
-    const body: Record<string, unknown> = {
-      searchTerm: celex,
-      multiSearchTerms: [],
-      sortTermList: [{ sortDirection: 'DESC', sortTerm: 'ALL_DATES' }],
-      pagination: { pageNumber: 0, pageSize: 1, from: 1, to: 2 },
-      language: language.toUpperCase(),
-      tabName: 'tout_jurisprudence',
-      isAllTabsRequest: false,
-      isSearchExact: true,
-      searchSources: ['document', 'metadata'],
-      ecli: '', publishedId: '', usualName: '', logicDocId: '',
-    };
-    const response = await this.request(() => this.http.post(SEARCH_URL, body, { headers: HEADERS }));
+    const body = createSearchPayload(celex, language, 1);
+    const response = await this.request(() => safeAxiosPost<IcuSearchResponse>(
+      this.http,
+      SEARCH_URL,
+      body,
+      ICU_SEARCH_POLICY,
+      { headers: HEADERS, timeout: 30_000, maxContentLength: 10 * 1024 * 1024 },
+    ));
     return response.data.searchHits?.[0]?.content?.logicDocId ?? null;
   }
 }
 
 function isCelex(value: string): boolean {
   return /^\d{5}[A-Z]{2}\d+$/.test(value);
+}
+
+/**
+ * Build the complete payload expected by the current InfoCuria frontend.
+ *
+ * The endpoint accepts older partial payloads with HTTP 200 but silently
+ * ignores `searchTerm`, returning the newest corpus entries. Keeping the
+ * frontend's structural fields here is therefore correctness-critical, not
+ * cosmetic. Published case numbers also need their dedicated filter; a plain
+ * `searchTerm: "C-311/18"` currently returns thousands of unrelated hits.
+ */
+export function createSearchPayload(
+  rawQuery: string,
+  language: string,
+  limit: number,
+): Record<string, unknown> {
+  const query = rawQuery.trim();
+  const normalizedLanguage = language.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalizedLanguage)) {
+    throw new Error(`Invalid InfoCuria language: ${language}`);
+  }
+  const normalizedLimit = Number.isFinite(limit)
+    ? Math.min(Math.max(1, Math.trunc(limit)), 100)
+    : 10;
+  const publishedId = /^(?:C|T|F)[-_–‑\s]?\d+\/\d{2,4}(?:\s+P)?$/i.test(query)
+    ? query.toUpperCase().replace(/[_–‑\s]/, '-')
+    : '';
+  const ecli = /^ECLI:/i.test(query) ? query.toUpperCase() : '';
+  const logicDocId = /^id_\d+$/i.test(query) ? query.toLowerCase() : '';
+  const exactIdentifier = publishedId || ecli || logicDocId;
+
+  return {
+    searchTerm: exactIdentifier ? `"${query}"` : query,
+    multiSearchTerms: [],
+    sortTermList: [{ sortDirection: 'DESC', sortTerm: 'SCORE' }],
+    pagination: {
+      pageNumber: 0,
+      pageSize: normalizedLimit,
+      from: 1,
+      to: normalizedLimit * 2,
+    },
+    language: normalizedLanguage,
+    tabName: 'tout_jurisprudence',
+    isAllTabsRequest: false,
+    isSearchExact: true,
+    searchSources: ['document', 'metadata'],
+    ecli,
+    publishedId,
+    usualName: '',
+    logicDocId,
+    repJurExpand: '',
+    filtersValue: [],
+    advancedFiltersValue: [],
+  };
 }
 
 /**
@@ -448,7 +526,10 @@ function toReference(hit: IcuSearchHit): CaseLawReference {
     provenance: {
       providerId: 'icu',
       sourceId: 'icu:infocuria',
-      providerDocumentId: hit.logicDocId ?? hit.idPublished ?? hit.celex ?? '',
+      // CELEX is the durable public identifier and enables the Cellar fast
+      // path. InfoCuria's internal blob ids can temporarily return 404 while a
+      // newly indexed document is still being published.
+      providerDocumentId: hit.celex ?? hit.logicDocId ?? hit.idPublished ?? '',
       ...(canonicalUrl ? { canonicalUrl } : {}),
     },
     rights: RIGHTS,

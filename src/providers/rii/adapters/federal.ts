@@ -3,10 +3,12 @@ import * as cheerio from 'cheerio';
 import { HTTP_USER_AGENT } from '../../../config.js';
 import { validateConversion } from '../../../shared/converter.js';
 import { xmlField, xmlItems } from '../../../shared/xml.js';
-import { readFirstZipEntry } from '../../../shared/zip.js';
+import { readFirstZipEntry, ZIP_MAX_ARCHIVE_BYTES } from '../../../shared/zip.js';
 import { parseRiiDocument } from '../xml.js';
 import { RiiConverter } from '../converter.js';
 import type { DecisionAdapter, DecisionEnumerationPage, DecisionEnumerationRequest, DecisionEntry, DecisionGetOptions, DecisionPage, DecisionSearchResult } from '../types.js';
+import { safeAxiosGet } from '../../../shared/network-policy.js';
+import { RII_FEDERAL_POLICY } from '../network-policy.js';
 
 const BASE_URL = 'https://www.rechtsprechung-im-internet.de/jportal/portal/page/bsjrsprod.psml';
 
@@ -148,9 +150,11 @@ export class FederalDecisionAdapter implements DecisionAdapter {
 
   private async getFromArchive(id: string): Promise<DecisionEntry | undefined> {
     try {
-      const response = await this.http.get<ArrayBuffer>(`${DOCS_URL}/${id}.zip`, {
+      const response = await safeAxiosGet<ArrayBuffer>(this.http, `${DOCS_URL}/${id}.zip`, RII_FEDERAL_POLICY, {
         headers: { 'User-Agent': HTTP_USER_AGENT },
         responseType: 'arraybuffer',
+        timeout: 30_000,
+        maxContentLength: ZIP_MAX_ARCHIVE_BYTES,
       });
       const entry = readFirstZipEntry(Buffer.from(response.data));
       const document = parseRiiDocument(entry.data.toString('utf8'));
@@ -186,11 +190,11 @@ export class FederalDecisionAdapter implements DecisionAdapter {
     if (this.toc && Date.now() - this.toc.fetchedAt < TOC_TTL_MS) return this.toc.entries;
     this.tocInFlight ??= (async () => {
       try {
-        const response = await this.http.get<string>(TOC_URL, {
+        const response = await safeAxiosGet<string>(this.http, TOC_URL, RII_FEDERAL_POLICY, {
           headers: { 'User-Agent': HTTP_USER_AGENT },
           responseType: 'text',
-          maxContentLength: Infinity,
-          maxBodyLength: Infinity,
+          timeout: 60_000,
+          maxContentLength: 64 * 1024 * 1024,
         });
         const entries = parseTableOfContents(response.data);
         this.toc = { entries, fetchedAt: Date.now() };
@@ -219,7 +223,7 @@ export class FederalDecisionAdapter implements DecisionAdapter {
    */
   async searchPage(_source: string, query: string, limit: number, page = 1): Promise<DecisionPage> {
     if (page > 1) return { results: [], pagingUnsupported: true };
-    const response = await this.http.get<string>(`${BASE_URL}/js_peid/Suchportlet2/media-type/html`, {
+    const response = await safeAxiosGet<string>(this.http, `${BASE_URL}/js_peid/Suchportlet2/media-type/html`, RII_FEDERAL_POLICY, {
       params: { formhaschangedvalue: 'yes', eventSubmit_doSearch: 'suchen', action: 'portlets.jw.MainAction', form: 'jurisExpertSearch', desc: 'text', query },
       headers: { 'User-Agent': HTTP_USER_AGENT },
     });
@@ -289,7 +293,10 @@ export class FederalDecisionAdapter implements DecisionAdapter {
       const fromArchive = await this.getFromArchive(id);
       if (fromArchive) return fromArchive;
     }
-    const response = await this.http.get<string>(BASE_URL, { params: { 'doc.id': id, 'doc.part': options.part || 'L', showdoccase: '1', paramfromHL: 'true' }, headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const response = await safeAxiosGet<string>(this.http, BASE_URL, RII_FEDERAL_POLICY, {
+      params: { 'doc.id': id, 'doc.part': options.part || 'L', showdoccase: '1', paramfromHL: 'true' },
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const d = this.converter.extractDecision(response.data);
     validateConversion(d.content, 'Rechtsprechung im Internet');
     return { title: d.title, content: d.content, url: `${BASE_URL}?doc.id=${id}`, court: d.court, date: d.date, fileNumber: d.fileNumber, ...(d.ecli ? { ecli: d.ecli } : {}) };

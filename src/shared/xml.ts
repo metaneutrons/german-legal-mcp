@@ -20,19 +20,50 @@ export function decodeXmlEntities(value: string): string {
     .replace(/&amp;/g, '&');
 }
 
-/**
- * Compiled once per tag. A walk of RII asks for five fields across 83.785
- * items, so building the pattern per call would mean 419.000 constructions
- * for a parse that otherwise takes ~150 ms.
- */
-const FIELD_PATTERNS = new Map<string, RegExp>();
+const XML_TAG_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_.:-]*$/;
 
-function fieldPattern(tag: string): RegExp {
-  const cached = FIELD_PATTERNS.get(tag);
-  if (cached) return cached;
-  const pattern = new RegExp(`<${tag}>([\\s\\S]*?)</${tag}>`);
-  FIELD_PATTERNS.set(tag, pattern);
-  return pattern;
+function openingTagEnd(fragment: string, start: number): number {
+  let quote: '"' | "'" | undefined;
+  for (let index = start; index < fragment.length; index += 1) {
+    const character = fragment[index];
+    if (quote !== undefined) {
+      if (character === quote) quote = undefined;
+    } else if (character === '"' || character === "'") {
+      quote = character;
+    } else if (character === '>') {
+      return index;
+    } else if (character === '<') {
+      return -1;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Return the first matching element body without compiling runtime text as a
+ * regular expression. Tags are XML names, and opening-tag attributes are
+ * accepted for the RII decision DTD.
+ */
+export function xmlElementContent(fragment: string, tag: string): string | undefined {
+  if (!XML_TAG_NAME_PATTERN.test(tag)) throw new TypeError('Invalid XML tag name');
+  const openingPrefix = `<${tag}`;
+  const closingTag = `</${tag}>`;
+  let searchFrom = 0;
+  while (searchFrom < fragment.length) {
+    const openingStart = fragment.indexOf(openingPrefix, searchFrom);
+    if (openingStart < 0) return undefined;
+    const boundary = fragment[openingStart + openingPrefix.length];
+    if (boundary !== '>' && !/\s/.test(boundary ?? '')) {
+      searchFrom = openingStart + openingPrefix.length;
+      continue;
+    }
+    const contentStart = openingTagEnd(fragment, openingStart + openingPrefix.length);
+    if (contentStart < 0) return undefined;
+    const closingStart = fragment.indexOf(closingTag, contentStart + 1);
+    if (closingStart < 0) return undefined;
+    return fragment.slice(contentStart + 1, closingStart);
+  }
+  return undefined;
 }
 
 /**
@@ -43,7 +74,7 @@ function fieldPattern(tag: string): RegExp {
  * children optional.
  */
 export function xmlField(fragment: string, tag: string): string {
-  return decodeXmlEntities(fragment.match(fieldPattern(tag))?.[1]?.trim() ?? '');
+  return decodeXmlEntities(xmlElementContent(fragment, tag)?.trim() ?? '');
 }
 
 /** Iterate the `<item>` fragments of a flat listing feed. */

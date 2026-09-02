@@ -7,6 +7,7 @@ import { validateConversion } from '../../shared/converter.js';
 import { saveToFile } from '../../shared/save-to-file.js';
 import { eulTools } from './tools/index.js';
 import { EulDataClient } from './data-client.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
 
 const logger = rootLogger.child({ module: 'eul-provider' });
 
@@ -28,8 +29,9 @@ export class EulProvider implements Provider {
   }
 
   async handleToolCall(toolName: string, args: Record<string, unknown>): Promise<ToolResult> {
-    if (toolName === 'eul:search') return this.handleSearch(args);
-    if (toolName === 'eul:get_document') return this.handleGetDocument(args);
+    const canonicalName = normalizeToolName(toolName);
+    if (canonicalName === 'eul_search') return this.handleSearch(args);
+    if (canonicalName === 'eul_get_document') return this.handleGetDocument(args);
     return { content: [{ type: 'text', text: `Unknown tool: ${toolName}` }], isError: true };
   }
 
@@ -42,7 +44,7 @@ export class EulProvider implements Provider {
       query: string; resource_type?: string; language?: string; limit?: number;
     };
 
-    logger.info('Searching EUR-Lex', { query, resource_type });
+    logger.info('Searching EUR-Lex', { queryLength: query.length, resource_type });
     const bindings = await this.client.searchLegislation(query, {
       resourceType: resource_type,
       language,

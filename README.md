@@ -6,17 +6,21 @@
 
 German, Austrian &amp; EU legal research — legislation, case law, parliamentary materials, literature and standards
 
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Node.js Version](https://img.shields.io/badge/node-%3E%3D25.0.0-brightgreen)](https://nodejs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)](https://www.typescriptlang.org/) [![MCP](https://img.shields.io/badge/MCP-1.29-purple)](https://modelcontextprotocol.io/)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) [![Node.js Version](https://img.shields.io/badge/node-%3E%3D24.0.0-brightgreen)](https://nodejs.org/) [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-blue)](https://www.typescriptlang.org/) [![MCP SDK](https://img.shields.io/badge/MCP_SDK-1.30-purple)](https://modelcontextprotocol.io/)
 
 </div>
 
-> **Production status**
+> **4.0 status**
 >
-> Version 3.2.1 provides production-ready provider contracts, application
-> components, MCP projections and public/private distributions. Case-law search
-> pages through every source that supports one and reports each source's own hit
-> total. Third-party portals remain external operational dependencies; scheduled
-> live contracts detect availability or response-shape drift. Subscription
+> Version 4.0.0 provides hardened provider contracts, application components,
+> MCP projections and public/private distributions. The local release gates are
+> designed to fail closed. Stable releases require an exact private/public
+> commit binding, protected signed tags, digest-approved workflows, public
+> GitHub/npm OIDC provenance and fresh live-contract evidence as defined by the
+> release runbook and dated enterprise audit. Case-law search pages through
+> every source that supports one and reports each source's own hit total.
+> Third-party portals remain external operational dependencies; scheduled live
+> contracts detect availability or response-shape drift. Subscription
 > sources require valid credentials, licences or institutional access.
 
 A Model Context Protocol (MCP) server for German, Austrian and EU legal
@@ -88,19 +92,19 @@ its session details behind the provider boundary.
 
 | Source | Status | Prefix | Authentication |
 |--------|--------|--------|----------------|
-| Bundes- & Landesrecht | ✅ Available | `legis:` | None (public) |
-| [Rechtsprechung im Internet](https://www.rechtsprechung-im-internet.de) | ✅ Available | `rii:` | None (public) |
-| [RIS Österreich](https://www.ris.bka.gv.at) | ✅ Available | `ris:` | None (public OGD API) |
-| [InfoCuria (CJEU)](https://infocuria.curia.europa.eu) | ✅ Available | `icu:` | None (public) |
-| [EUR-Lex](https://eur-lex.europa.eu) | ✅ Available | `eul:` | None (public) |
-| [DIP Bundestag](https://dip.bundestag.de) | ✅ Available | `dip:` | Public key included |
-| [arXiv](https://arxiv.org) | ✅ Available | `arxiv:` | None (public) |
-| [nautos.de](https://nautos.de) | ✅ Available | `nautos:` | Required (IP or credentials) |
+| Bundes- & Landesrecht | ✅ Available | `legis_` | None (public) |
+| [Rechtsprechung im Internet](https://www.rechtsprechung-im-internet.de) | ✅ Available | `rii_` | None (public) |
+| [RIS Österreich](https://www.ris.bka.gv.at) | ✅ Available | `ris_` | None (public OGD API) |
+| [InfoCuria (CJEU)](https://infocuria.curia.europa.eu) | ✅ Available | `icu_` | None (public) |
+| [EUR-Lex](https://eur-lex.europa.eu) | ✅ Available | `eul_` | None (public) |
+| [DIP Bundestag](https://dip.bundestag.de) | ✅ Available | `dip_` | Public key included |
+| [arXiv](https://arxiv.org) | ✅ Available | `arxiv_` | None (public) |
+| [nautos.de](https://nautos.de) | ✅ Available | `nautos_` | Required (IP or credentials) |
 
 ## Features
 
 
-### Bundes- & Landesrecht (`legis:*` tools)
+### Bundes- & Landesrecht (`legis_*` tools)
 
 - **Federal and state legislation** — BUND (all federal laws) + 16 Länder (all states)
 - **No authentication** — free public access; the client defines no explicit request limit
@@ -111,7 +115,7 @@ its session details behind the provider boundary.
 - **Save to file** — `save_path` parameter to avoid context pollution
 - **Available states:** BUND, BB, BW, BY, BE, HB, HE, HH, MV, NI, NW, RP, SL, SN, ST, SH, TH
 
-### Rechtsprechung im Internet (`rii:*` tools)
+### Rechtsprechung im Internet (`rii_*` tools)
 
 - **Federal court decisions** — BVerfG, BGH, BVerwG, BFH, BAG, BSG, BPatG (from 2010)
 - **Bavarian state courts** — AG, LG, OLG, VG, VGH, FG, ArbG, LAG, BayVerfGH via gesetze-bayern.de
@@ -121,7 +125,7 @@ its session details behind the provider boundary.
 - **Bremen state courts** — official Bremen VG archive via `source: "HB"`; the Bremen index links separate OLG/OVG/VG/LAG portals, so coverage is explicitly partial until those portals expose a common search interface
 - **Saxony state courts** — ESAMOSplus WebForms search for the OLG Dresden archive via `source: "SN"`
 - **jPortal state courts** — Baden-Württemberg, Berlin, Hamburg, Hessen, Mecklenburg-Vorpommern, Rheinland-Pfalz, Saarland, Sachsen-Anhalt, Schleswig-Holstein and Thüringen via their official jPortal portals
-- **Shared DecisionAdapter contract** — all new state sources normalize IDs, court, date, file number, ECLI, snippets and Markdown retrieval behind the same `rii:*` tools
+- **Shared DecisionAdapter contract** — all new state sources normalize IDs, court, date, file number, ECLI, snippets and Markdown retrieval behind the same `rii_*` tools
 - **Cross-portal search** — `source: "ALL"` searches every configured decision portal in parallel, deduplicates overlapping decisions, ranks the consolidated result list and reports unavailable portals
 - **No authentication** — free public access
 - **Full text search** — search across all federal court decisions
@@ -129,21 +133,21 @@ its session details behind the provider boundary.
 - **Randnummern** — formatted as `[Rn. 5]{.rn}` (pandoc spans)
 - **Save to file** — `save_path` parameter to avoid context pollution
 
-### RIS Österreich (`ris:*` tools)
+### RIS Österreich (`ris_*` tools)
 
 - **Austrian federal, state & case law** — broad Bundesrecht and Landesrecht collection search, plus Judikatur (OGH/OLG/LG via Justiz; VwGH, VfGH, BVwG and others via the `court` filter)
-  - **Collection semantics:** `ris:search` can return consolidated norms (`BrKons`/`LrKons`) and authentic gazette publications; the returned `applikation` identifies the result type. A `bundesland` filter restricts Landesrecht to that state's consolidated law (`LrKons`). For state case law use `application="judikatur"` with the appropriate `court` (e.g. `Lvwg`), not `bundesland`.
+  - **Collection semantics:** `ris_search` can return consolidated norms (`BrKons`/`LrKons`) and authentic gazette publications; the returned `applikation` identifies the result type. A `bundesland` filter restricts Landesrecht to that state's consolidated law (`LrKons`). For state case law use `application="judikatur"` with the appropriate `court` (e.g. `Lvwg`), not `bundesland`.
 - **Normalized application client** — `RisDataClient.search()` restricts legislation results to consolidated law and supports all 9 Bundesländer through normalized jurisdictions
 - **No authentication** — free public Open Government Data REST API (`data.bka.gv.at/ris/api/v2.6`)
-- **Latest-first** — `sort="date"` for the newest decisions; Judikatur Rechtssätze link their full decision text (Entscheidungstext) for `ris:get`
-- **Navigate & read statutes** — `ris:toc law="ABGB"` lists the §§ with headings; `ris:get_norm law="ABGB" paragraph="1295"` returns a single §
-- **Surgical retrieval** — `ris:get section=…` returns only a Randnummer (`Rn 5`), an Rn range (`Rn 5-9`), a line range (`lines:1-40`), or a heading (`Spruch`) — all token-preserving
+- **Latest-first** — `sort="date"` for the newest decisions; Judikatur Rechtssätze link their full decision text (Entscheidungstext) for `ris_get`
+- **Navigate & read statutes** — `ris_toc law="ABGB"` lists the §§ with headings; `ris_get_norm law="ABGB" paragraph="1295"` returns a single §
+- **Surgical retrieval** — `ris_get section=…` returns only a Randnummer (`Rn 5`), an Rn range (`Rn 5-9`), a line range (`lines:1-40`), or a heading (`Spruch`) — all token-preserving
 - **Pandoc-compatible Markdown** — Randnummern as `[Rn. 5]{.rn}` spans; document HTML converted with Cheerio + Turndown
 - **Structured metadata** — Geschäftszahl, Entscheidungsdatum, ECLI, issuing court/organ
 - **Save to file** — `save_path` parameter to avoid context pollution
-- ⚠️ **Austrian** law — for German case law use `rii:*`, for German legislation use `legis:*`
+- ⚠️ **Austrian** law — for German case law use `rii_*`, for German legislation use `legis_*`
 
-### InfoCuria — CJEU (`icu:*` tools)
+### InfoCuria — CJEU (`icu_*` tools)
 
 - **EU Court of Justice case law** — judgments, opinions, orders from CJEU and General Court
 - **No authentication** — free public access via InfoCuria API
@@ -153,7 +157,7 @@ its session details behind the provider boundary.
 - **Partial content** — `section` parameter for Rn ranges, headings, or line ranges
 - **Save to file** — `save_path` parameter to avoid context pollution
 
-### EUR-Lex (`eul:*` tools)
+### EUR-Lex (`eul_*` tools)
 
 - **EU legislation** — directives, regulations, decisions, treaties (TFEU, TEU)
 - **No authentication** — free public access via Cellar REST API and SPARQL
@@ -163,7 +167,7 @@ its session details behind the provider boundary.
 - **Partial content** — `section` parameter for articles (Art. 5), headings, or line ranges
 - **Save to file** — `save_path` parameter to avoid context pollution
 
-### DIP Bundestag (`dip:*` tools)
+### DIP Bundestag (`dip_*` tools)
 
 - **Parliamentary documents** — Bundestagsdrucksachen (Gesetzentwürfe, Beschlussempfehlungen, Anfragen)
 - **Legislative processes** — Vorgänge with status tracking and linked documents
@@ -172,7 +176,7 @@ its session details behind the provider boundary.
 - **Public API key included** — works out of the box (key valid until end of May 2027, override via env var)
 - **Save to file** — `save_path` parameter to avoid context pollution
 
-### arXiv (`arxiv:*` tools)
+### arXiv (`arxiv_*` tools)
 
 - **Preprint search** — search by keywords, author, title, abstract, or category
 - **Metadata + abstract** — default response without full text fetch (token-efficient)
@@ -181,13 +185,13 @@ its session details behind the provider boundary.
 - **No authentication** — free public API; the client defines no explicit request limit (upstream usage policies still apply)
 - **Save to file** — `save_path` parameter to avoid context pollution
 
-### nautos.de (`nautos:*` tools)
+### nautos.de (`nautos_*` tools)
 
 - **DIN/EN/ISO standards** — search and retrieve technical standards from nautos.de
 - **Two-phase document retrieval** — outline (metadata + TOC) first, then sections on demand
 - **Automatic authentication** — IP-based login (auto-detected), user-based login fallback
 - **Structured TOC** — hierarchical table of contents with section IDs for navigation
-- **File cache** — 30-day TTL, persistent across restarts (`~/.local/share/german-legal-mcp/cache/nautos/`)
+- **Identity-scoped file cache** — 30-day TTL, persistent across restarts under `<GLMCP_STATE_DIR>/cache/nautos/identities/`
 - **Save to file** — `save_path` parameter to dump full document to disk
 
 ## Install in Claude Desktop (one-click bundle)
@@ -226,6 +230,7 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `GLMCP_STATE_DIR` | Platform default | Root directory for logs, sessions, caches, metrics, daemon sockets and locks. |
+| `GLMCP_EXPORT_DIR` | `<GLMCP_STATE_DIR>/exports` | Exclusive root for files written through `save_path`; existing files and symlinked parents are refused. |
 | `GLMCP_LOG_LEVEL` | `info` | Structured log level. |
 | `GLMCP_LEGIS_ENABLED` | `true` | Bundes- & Landesrecht |
 | `GLMCP_RII_ENABLED` | `true` | Rechtsprechung im Internet |
@@ -246,8 +251,10 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | `GLMCP_NAUTOS_USERNAME` | For user-based | nautos.de account username |
 | `GLMCP_NAUTOS_PASSWORD` | For user-based | nautos.de account password |
 | `GLMCP_NAUTOS_TENANT_ID` | No | Tenant ID (auto-detected from login response) |
+| `GLMCP_NAUTOS_ENTITLEMENT_ID` | No | Optional stable, non-secret licence identity added to the tenant/account cache partition. Changing it intentionally creates a fresh cache identity. |
 
 **Authentication**: IP-based login is tried first (requires `GLMCP_NAUTOS_TENANT_KEY`). If it fails and credentials are set, user-based login is attempted as fallback.
+
 
 
 ## Tools
@@ -257,63 +264,63 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 
 | Tool | Description |
 |------|-------------|
-| `legis:search` | Search state legislation. Parameter: `query`, `state` (e.g., "BW", "BE"), `limit`. Länder search uses official portal/catalogue data with local normalization and reranking so common abbreviations and title queries (e.g. `VwVfG NRW`, `BbgVwVfG`, `BremVwVfG`) resolve to the root law before section hits. Note: BUND does not support search. |
-| `legis:get` | Retrieve a specific law/norm. BUND: `id` = "law/section" (e.g., "bgb/823"). Länder: `id` from search results. Optional `save_path`. |
-| `legis:toc` | Compact table of contents for a law — section numbers and headings. Supports `from`/`to` range and `depth` filter. BUND: `id` = law abbreviation (e.g., "bgb"). |
-| `legis:states` | List available jurisdictions with implementation status. |
+| `legis_search` | Search state legislation. Parameter: `query`, `state` (e.g., "BW", "BE"), `limit`. Länder search uses official portal/catalogue data with local normalization and reranking so common abbreviations and title queries (e.g. `VwVfG NRW`, `BbgVwVfG`, `BremVwVfG`) resolve to the root law before section hits. Note: BUND does not support search. |
+| `legis_get` | Retrieve a specific law/norm. BUND: `id` = "law/section" (e.g., "bgb/823"). Länder: `id` from search results. Optional `save_path`. |
+| `legis_toc` | Compact table of contents for a law — section numbers and headings. Supports `from`/`to` range and `depth` filter. BUND: `id` = law abbreviation (e.g., "bgb"). |
+| `legis_states` | List available jurisdictions with implementation status. |
 
 ### Rechtsprechung im Internet
 
 | Tool | Description |
 |------|-------------|
-| `rii:search` | Search for court decisions. `source` supports `BUND`, `BY`, `NW`, `NI`, `BB`, `HB`, `SN`, the jPortal state codes `BW`, `BE`, `HH`, `MV`, `RP`, `SL`, `ST`, `SH`, `TH`, `HE`, or `ALL` for a parallel cross-portal search. Note `BUND` is federal-only — state Arbeits-, Verwaltungs- and Oberlandesgerichte live in the state sources, so `ALL` is the right choice for a topic survey. With `ALL`, result slots are shared across the portals that matched and each portal's own hit total is reported. `page` pages every portal at once (BUND, HB and SN expose only their first page and say so); `collapse_duplicates` folds mass-litigation runs, naming what it folded. |
-| `rii:get_decision` | Retrieve full text by doc ID. `part`: K (Kurztext) or L (Langtext, default) for BUND; optional `save_path` is supported for every source. For NRW, use the URL returned by `rii:search`; for jPortal, use its `doc_id`. |
+| `rii_search` | Search for court decisions. `source` supports `BUND`, `BY`, `NW`, `NI`, `BB`, `HB`, `SN`, the jPortal state codes `BW`, `BE`, `HH`, `MV`, `RP`, `SL`, `ST`, `SH`, `TH`, `HE`, or `ALL` for a parallel cross-portal search. Note `BUND` is federal-only — state Arbeits-, Verwaltungs- and Oberlandesgerichte live in the state sources, so `ALL` is the right choice for a topic survey. With `ALL`, result slots are shared across the portals that matched and each portal's own hit total is reported. `page` pages every portal at once (BUND, HB and SN expose only their first page and say so); `collapse_duplicates` folds mass-litigation runs, naming what it folded. |
+| `rii_get_decision` | Retrieve full text by doc ID. `part`: K (Kurztext) or L (Langtext, default) for BUND; optional `save_path` is supported for every source. For NRW, use the URL returned by `rii_search`; for jPortal, use its `doc_id`. |
 
 ### RIS Österreich
 
 | Tool | Description |
 |------|-------------|
-| `ris:search` | Search the broad Austrian RIS Bundesrecht/Landesrecht collections or Judikatur (`court`: Justiz/Vwgh/Vfgh/Bvwg). Legislation hits may be consolidated (`BrKons`/`LrKons`) or authentic publications; inspect the returned `applikation`. `bundesland` restricts Landesrecht to that state's consolidated law. `sort="date"` returns the latest decisions first. Judikatur hits are Rechtssätze that link their full decision text for `ris:get`. |
-| `ris:get` | Retrieve a RIS document as Markdown by `content_url` (from search) or `id` + `applikation`. `section` returns only part — `Rn 5`, `Rn 5-9`, `lines:1-40`, or a heading like `Spruch` — for token-preserving reads. Optional `save_path`. |
-| `ris:get_norm` | Retrieve a single **§** of a consolidated law — `law="ABGB" paragraph="1295"`. `application`: bundesrecht (federal) or landesrecht (+ `bundesland`). The token-preserving way to read one paragraph. |
-| `ris:toc` | Table of contents (Inhaltsverzeichnis) of a consolidated law — its §§ with headings — to navigate before `ris:get_norm`. `law="ABGB"` (full title if an abbreviation fails). `application` + `bundesland` as above. |
+| `ris_search` | Search the broad Austrian RIS Bundesrecht/Landesrecht collections or Judikatur (`court`: Justiz/Vwgh/Vfgh/Bvwg). Legislation hits may be consolidated (`BrKons`/`LrKons`) or authentic publications; inspect the returned `applikation`. `bundesland` restricts Landesrecht to that state's consolidated law. `sort="date"` returns the latest decisions first. Judikatur hits are Rechtssätze that link their full decision text for `ris_get`. |
+| `ris_get` | Retrieve a RIS document as Markdown by `content_url` (from search) or `id` + `applikation`. `section` returns only part — `Rn 5`, `Rn 5-9`, `lines:1-40`, or a heading like `Spruch` — for token-preserving reads. Optional `save_path`. |
+| `ris_get_norm` | Retrieve a single **§** of a consolidated law — `law="ABGB" paragraph="1295"`. `application`: bundesrecht (federal) or landesrecht (+ `bundesland`). The token-preserving way to read one paragraph. |
+| `ris_toc` | Table of contents (Inhaltsverzeichnis) of a consolidated law — its §§ with headings — to navigate before `ris_get_norm`. `law="ABGB"` (full title if an abbreviation fails). `application` + `bundesland` as above. |
 
 ### InfoCuria — CJEU
 
 | Tool | Description |
 |------|-------------|
-| `icu:search` | Search CJEU decisions and opinions. Returns case numbers, ECLI, dates, and document IDs. |
-| `icu:get_document` | Retrieve full text by case number (C-476/17) or CELEX number. Supports `section` (Rn ranges, headings, line ranges) and `save_path`. |
+| `icu_search` | Search CJEU decisions and opinions. Returns case numbers, ECLI, dates, and document IDs. |
+| `icu_get_document` | Retrieve full text by case number (C-476/17) or CELEX number. Supports `section` (Rn ranges, headings, line ranges) and `save_path`. |
 
 ### EUR-Lex
 
 | Tool | Description |
 |------|-------------|
-| `eul:search` | Search EU legislation via SPARQL. Filter by type (directive, regulation, decision, treaty). |
-| `eul:get_document` | Retrieve EU legislation by CELEX number (e.g., "32016R0679" for GDPR). Supports `section` (Art. 5, Artikel 5-10, headings, line ranges) and `save_path`. |
+| `eul_search` | Search EU legislation via SPARQL. Filter by type (directive, regulation, decision, treaty). |
+| `eul_get_document` | Retrieve EU legislation by CELEX number (e.g., "32016R0679" for GDPR). Supports `section` (Art. 5, Artikel 5-10, headings, line ranges) and `save_path`. |
 
 ### DIP Bundestag
 
 | Tool | Description |
 |------|-------------|
-| `dip:search` | Search Bundestagsdrucksachen by title. Filter by type (Gesetzentwurf, Anfrage, etc.), Wahlperiode, date range. |
-| `dip:get` | Retrieve full text of a Drucksache by Dokumentnummer (e.g., "19/27426"). Supports `section` and `save_path`. |
-| `dip:search_vorgang` | Search legislative processes (Vorgänge) with status and linked Drucksachen. |
-| `dip:search_plenarprotokoll` | Full text search across parliamentary debate transcripts (BT and BR). |
+| `dip_search` | Search Bundestagsdrucksachen by title. Filter by type (Gesetzentwurf, Anfrage, etc.), Wahlperiode, date range. |
+| `dip_get` | Retrieve full text of a Drucksache by Dokumentnummer (e.g., "19/27426"). Supports `section` and `save_path`. |
+| `dip_search_vorgang` | Search legislative processes (Vorgänge) with status and linked Drucksachen. |
+| `dip_search_plenarprotokoll` | Full text search across parliamentary debate transcripts (BT and BR). |
 
 ### arXiv
 
 | Tool | Description |
 |------|-------------|
-| `arxiv:search` | Search preprints by keywords, author, title, abstract, or category. Returns metadata + abstract. |
-| `arxiv:get` | Retrieve paper by arXiv ID. Default: metadata + abstract. With `section` or `save_path`: HTML full text as Markdown (~2024+, older: PDF link). |
+| `arxiv_search` | Search preprints by keywords, author, title, abstract, or category. Returns metadata + abstract. |
+| `arxiv_get` | Retrieve paper by arXiv ID. Default: metadata + abstract. With `section` or `save_path`: HTML full text as Markdown (~2024+, older: PDF link). |
 
 ### nautos.de
 
 | Tool | Description |
 |------|-------------|
-| `nautos:search` | Search DIN/EN/ISO standards by document number. Returns acCode, title, date, type. |
-| `nautos:get_document` | Retrieve standard by acCode. Returns outline (metadata + TOC) by default; use `section` for specific parts, `save_path` to save full document. |
+| `nautos_search` | Search DIN/EN/ISO standards by document number. Returns acCode, title, date, type. |
+| `nautos_get_document` | Retrieve standard by acCode. Returns outline (metadata + TOC) by default; use `section` for specific parts, `save_path` to save full document. |
 
 ### Token-Efficient Document Retrieval
 
@@ -325,8 +332,10 @@ Retrieval behavior is explicit and provider-specific:
    documented in their tool description, such as Randnummer, heading, line or
    article ranges. Selector formats are not assumed across every provider.
 3. **File output** — every tool that advertises `save_path` requires an
-   absolute path. If that tool also supports `section`, it writes the requested
-   section rather than the complete document.
+   absolute path inside `GLMCP_EXPORT_DIR`. Existing targets, symbolic-link
+   parents and paths outside that root are refused; successful writes create
+   private directories/files. If that tool also supports `section`, it writes
+   the requested section rather than the complete document.
 
 Other retrieval tools return their documented direct response; for example,
 arXiv returns metadata and the abstract by default. They are not implicitly
@@ -372,7 +381,7 @@ report or CI artifact.
 ### MCP Inspector
 
 ```bash
-npx @modelcontextprotocol/inspector node dist/index.js
+npx @modelcontextprotocol/inspector node dist/bin/german-legal-mcp.js
 ```
 
 ### Commit Convention
@@ -395,7 +404,7 @@ This repo uses [Conventional Commits](https://www.conventionalcommits.org/) enfo
 - **Structured JSON errors** — all providers return `BaseError.toJSON()` with `code`, `userMessage`, `recoveryHint`; Axios errors auto-wrapped; DNS failures fail fast
 - **Conversion validation** — all HTML→Markdown providers validate output is non-empty; detects upstream layout changes early
 
-- Tools namespaced by source (`legis:`, `rii:`, `ris:`, `icu:`, `eul:`, `dip:`, `arxiv:`, `nautos:`)
+- Tools namespaced by source (`legis_`, `rii_`, `ris_`, `icu_`, `eul_`, `dip_`, `arxiv_`, `nautos_`)
 
 ## License
 

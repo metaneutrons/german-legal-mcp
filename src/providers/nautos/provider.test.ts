@@ -22,7 +22,7 @@ describe('NautosProvider', () => {
   it('uses an injected client for search', async () => {
     const client = fakeClient();
     const provider = new NautosProvider(client);
-    await expect(provider.handleToolCall('nautos:search', {
+    await expect(provider.handleToolCall('nautos_search', {
       query: 'DIN 1',
       limit: 2,
     })).resolves.toMatchObject({
@@ -35,11 +35,11 @@ describe('NautosProvider', () => {
     const client = fakeClient();
     client.search = vi.fn(async () => ({ count: 0, items: [] }));
     const provider = new NautosProvider(client);
-    await expect(provider.handleToolCall('nautos:search', { query: 'none' }))
+    await expect(provider.handleToolCall('nautos_search', { query: 'none' }))
       .resolves.toMatchObject({
         content: [{ text: expect.stringContaining('No results') }],
       });
-    await expect(provider.handleToolCall('nautos:unknown', {}))
+    await expect(provider.handleToolCall('nautos_unknown', {}))
       .resolves.toMatchObject({ isError: true });
   });
 });

@@ -2,6 +2,10 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type { ToolDefinition, ToolResult } from './shared/types.js';
 import { riiTools } from './providers/rii/tools/index.js';
 import {
+  isCanonicalToolName,
+  normalizeToolName,
+} from './shared/tool-names.js';
+import {
   looksLikeToolInvocation,
   parseToolArgs,
   runCli,
@@ -13,7 +17,7 @@ function fixtureTool(overrides: Partial<{
   required: string[];
 }> = {}): ToolDefinition {
   return {
-    name: 'fixture:run',
+    name: 'fixture_run',
     description: 'A fixture tool for CLI tests.',
     inputSchema: {
       toJSONSchema: () => ({
@@ -35,7 +39,11 @@ function fixtureRegistry(
 }
 
 describe('looksLikeToolInvocation', () => {
-  it('accepts the provider:tool shape', () => {
+  it('accepts the canonical provider_tool shape', () => {
+    expect(looksLikeToolInvocation(['rii_search', '--query', 'x'])).toBe(true);
+  });
+
+  it('continues to recognize the legacy provider:tool CLI shape', () => {
     expect(looksLikeToolInvocation(['rii:search', '--query', 'x'])).toBe(true);
   });
 
@@ -43,6 +51,23 @@ describe('looksLikeToolInvocation', () => {
     expect(looksLikeToolInvocation(['--help'])).toBe(false);
     expect(looksLikeToolInvocation([])).toBe(false);
     expect(looksLikeToolInvocation(['search'])).toBe(false);
+    expect(looksLikeToolInvocation(['RII_search'])).toBe(false);
+    expect(looksLikeToolInvocation(['rii_do-stuff'])).toBe(false);
+    expect(looksLikeToolInvocation(['rii__search'])).toBe(false);
+  });
+});
+
+describe('tool-name compatibility', () => {
+  it('normalizes only the narrow legacy provider:operation shape', () => {
+    expect(normalizeToolName('rii:search')).toBe('rii_search');
+    expect(normalizeToolName('source:document/path')).toBe('source:document/path');
+    expect(normalizeToolName('test:tool-names')).toBe('test:tool-names');
+  });
+
+  it('uses one strict canonical grammar for new names', () => {
+    expect(isCanonicalToolName('dip_search_plenarprotokoll', 'dip')).toBe(true);
+    expect(isCanonicalToolName('dip_search_plenarprotokoll', 'rii')).toBe(false);
+    expect(isCanonicalToolName('dip_do-stuff', 'dip')).toBe(false);
   });
 });
 
@@ -115,7 +140,7 @@ describe('parseToolArgs', () => {
     expect(errors).toEqual(['--query requires a value']);
   });
 
-  it('matches the real rii:search schema end to end', () => {
+  it('matches the real rii_search schema end to end', () => {
     // Ground truth against the actual tool this feature exists to serve,
     // not a hand-written stand-in for zod's toJSONSchema() output.
     const schema = (riiTools[0]!.inputSchema as { toJSONSchema: () => any }).toJSONSchema();
@@ -160,11 +185,11 @@ describe('runCli', () => {
     }));
     const registry = fixtureRegistry([fixtureTool()], handleToolCall);
 
-    const code = await runCli(['fixture:run', '--query', 'x'], registry);
+    const code = await runCli(['fixture_run', '--query', 'x'], registry);
 
     expect(code).toBe(0);
     expect(stdout.join('')).toContain('ok result');
-    expect(handleToolCall).toHaveBeenCalledWith('fixture:run', { query: 'x' });
+    expect(handleToolCall).toHaveBeenCalledWith('fixture_run', { query: 'x' });
   });
 
   it('exits 1 and still prints content when the tool reports isError', async () => {
@@ -173,7 +198,7 @@ describe('runCli', () => {
       isError: true,
     }));
 
-    const code = await runCli(['fixture:run', '--query', 'x'], registry);
+    const code = await runCli(['fixture_run', '--query', 'x'], registry);
 
     expect(code).toBe(1);
     expect(stdout.join('')).toContain('something went wrong');
@@ -184,7 +209,7 @@ describe('runCli', () => {
       throw new Error('socket hang up');
     });
 
-    const code = await runCli(['fixture:run', '--query', 'x'], registry);
+    const code = await runCli(['fixture_run', '--query', 'x'], registry);
 
     expect(code).toBe(1);
     expect(stderr.join('')).toContain('socket hang up');
@@ -195,7 +220,7 @@ describe('runCli', () => {
     const handleToolCall = vi.fn();
     const registry = fixtureRegistry([fixtureTool()], handleToolCall);
 
-    const code = await runCli(['fixture:run', '--help'], registry);
+    const code = await runCli(['fixture_run', '--help'], registry);
 
     expect(code).toBe(0);
     expect(handleToolCall).not.toHaveBeenCalled();
@@ -205,7 +230,7 @@ describe('runCli', () => {
 
   it('shows a defaulted field as optional even when the schema lists it as required', async () => {
     // Zod's `.toJSONSchema()` puts every `.optional().default(x)` field in
-    // `required` too (ground-truth: verified directly against real rii:search
+    // `required` too (ground-truth: verified directly against real rii_search
     // output). Printing "required" next to "default: 10" would tell a CLI
     // user they must pass a flag they can freely omit.
     const registry = fixtureRegistry([fixtureTool({
@@ -216,7 +241,7 @@ describe('runCli', () => {
       required: ['query', 'limit'],
     })], vi.fn());
 
-    const code = await runCli(['fixture:run', '--help'], registry);
+    const code = await runCli(['fixture_run', '--help'], registry);
 
     expect(code).toBe(0);
     const out = stdout.join('');
@@ -227,20 +252,20 @@ describe('runCli', () => {
     const handleToolCall = vi.fn();
     const registry = fixtureRegistry([fixtureTool()], handleToolCall);
 
-    const code = await runCli(['fixture:nope'], registry);
+    const code = await runCli(['fixture_nope'], registry);
 
     expect(code).toBe(1);
     expect(handleToolCall).not.toHaveBeenCalled();
-    expect(stderr.join('')).toContain('Unknown tool "fixture:nope"');
+    expect(stderr.join('')).toContain('Unknown tool "fixture_nope"');
     // Same-provider tools are suggested ahead of the full list.
-    expect(stderr.join('')).toContain('fixture:run');
+    expect(stderr.join('')).toContain('fixture_run');
   });
 
   it('rejects bad arguments before ever calling handleToolCall', async () => {
     const handleToolCall = vi.fn();
     const registry = fixtureRegistry([fixtureTool()], handleToolCall);
 
-    const code = await runCli(['fixture:run', '--limit', 'not-a-number'], registry);
+    const code = await runCli(['fixture_run', '--limit', 'not-a-number'], registry);
 
     expect(code).toBe(1);
     expect(handleToolCall).not.toHaveBeenCalled();
@@ -252,5 +277,17 @@ describe('runCli', () => {
     const code = await runCli([], registry);
     expect(code).toBe(1);
     expect(stderr.join('')).toContain('A tool name is required');
+  });
+
+  it('normalizes a legacy colon alias before dispatch', async () => {
+    const handleToolCall = vi.fn(async (): Promise<ToolResult> => ({
+      content: [{ type: 'text', text: 'ok result' }],
+    }));
+    const registry = fixtureRegistry([fixtureTool()], handleToolCall);
+
+    const code = await runCli(['fixture:run', '--query', 'x'], registry);
+
+    expect(code).toBe(0);
+    expect(handleToolCall).toHaveBeenCalledWith('fixture_run', { query: 'x' });
   });
 });

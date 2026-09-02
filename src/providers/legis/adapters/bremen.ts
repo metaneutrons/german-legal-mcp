@@ -3,18 +3,24 @@ import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import type { LegisAdapter, SearchResult, LegisEntry } from '../types.js';
 import { rankSearchResults, type RankableSearchResult } from './search-ranking.js';
+import { assertUrlAllowed, safeAxiosGet } from '../../../shared/network-policy.js';
+import { LEGIS_BREMEN_POLICY } from '../network-policy.js';
 
 const BASE = 'https://www.transparenz.bremen.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
 
 function docUrl(id: string): string {
   if (id.startsWith('http://') || id.startsWith('https://')) {
-    const url = new URL(id);
+    const url = new URL(assertUrl(id));
     url.searchParams.set('asl', 'bremen203_tpgesetz.c.55340.de');
     url.searchParams.set('template', '20_gp_ifg_meta_detail_d');
     return url.toString();
   }
   return `${BASE}/sixcms/detail.php?gsid=bremen2014_tp.c.${id}.de&asl=bremen203_tpgesetz.c.55340.de&template=20_gp_ifg_meta_detail_d`;
+}
+
+function assertUrl(url: string): string {
+  return assertUrlAllowed(url, LEGIS_BREMEN_POLICY).toString();
 }
 
 function toSearchResult(result: RankableSearchResult): SearchResult {
@@ -30,7 +36,7 @@ export class BremenAdapter implements LegisAdapter {
   readonly states = ['HB'] as const;
 
   async search(_state: string, query: string, limit: number): Promise<SearchResult[]> {
-    const resp = await axios.get<string>(`${BASE}/sixcms/detail.php`, {
+    const resp = await safeAxiosGet<string>(axios, `${BASE}/sixcms/detail.php`, LEGIS_BREMEN_POLICY, {
       params: {
         template: '20_search_d',
         'search[send]': 'true',
@@ -63,7 +69,7 @@ export class BremenAdapter implements LegisAdapter {
 
   async get(_state: string, id: string): Promise<LegisEntry> {
     const url = docUrl(id);
-    const resp = await axios.get<string>(url, { maxRedirects: 5 });
+    const resp = await safeAxiosGet<string>(axios, url, LEGIS_BREMEN_POLICY, { maxRedirects: 5 });
     const $ = load(resp.data);
 
     const title = $('title').text().replace(/\s*-\s*Transparenzportal Bremen$/, '').trim();

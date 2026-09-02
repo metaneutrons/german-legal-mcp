@@ -42,21 +42,25 @@ describe('NRWAdapter', () => {
 
     const results = await new NRWAdapter().search('NW', 'VwVfG NRW', 10);
 
-    expect(mockAxios.post).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({
-      size: 100,
-      query: {
-        function_score: {
-          functions: expect.any(Array),
-          query: {
-            bool: {
-              must: expect.arrayContaining([
-                { terms: { type: ['state_law_and_regulations', 'state_law_ministerial_gazette'] } },
-              ]),
+    expect(mockAxios.post).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        size: 100,
+        query: {
+          function_score: {
+            functions: expect.any(Array),
+            query: {
+              bool: {
+                must: expect.arrayContaining([
+                  { terms: { type: ['state_law_and_regulations', 'state_law_ministerial_gazette'] } },
+                ]),
+              },
             },
           },
         },
-      },
-    }));
+      }),
+      expect.any(Object),
+    );
     expect(results).toEqual([{
       id: '123',
       title: 'Verwaltungsverfahrensgesetz für das Land Nordrhein-Westfalen',

@@ -13,9 +13,16 @@ import type {
   CorpusEnumerationRequest,
 } from '../../contracts/provider-capabilities.js';
 import { EulConverter } from './converter.js';
+import { safeAxiosGet } from '../../shared/network-policy.js';
+import { isoDateLiteral, sparqlStringLiteral } from '../../shared/sparql.js';
+import {
+  CELEX_PATTERN,
+  EUL_DOCUMENT_POLICY,
+  EUL_SPARQL_POLICY,
+} from './network-policy.js';
 
-const CELLAR_BASE = 'http://publications.europa.eu/resource/celex';
-const SPARQL_URL = 'http://publications.europa.eu/webapi/rdf/sparql';
+const EURLEX_HTML = 'https://eur-lex.europa.eu/legal-content';
+const SPARQL_URL = 'https://publications.europa.eu/webapi/rdf/sparql';
 
 const LANG_MAP: Record<string, string> = {
   DE: 'DEU', EN: 'ENG', FR: 'FRA', IT: 'ITA', ES: 'SPA', NL: 'NLD', PT: 'POR', PL: 'POL',
@@ -39,6 +46,12 @@ export interface EulSearchResult {
   readonly documentDate?: string;
 }
 
+interface SparqlResponse {
+  readonly results?: {
+    readonly bindings?: Array<Record<string, { value?: string }>>;
+  };
+}
+
 const DEFAULT_ENUMERATION_LIMIT = 500;
 const MAX_ENUMERATION_LIMIT = 2_000;
 
@@ -49,7 +62,7 @@ const MAX_ENUMERATION_LIMIT = 2_000;
  * last identifier it saw.
  */
 function keysetFilter(cursor: string | undefined): string {
-  return cursor ? `FILTER(STR(?celex) > "${cursor.replace(/"/g, '')}")` : '';
+  return cursor ? `FILTER(STR(?celex) > ${sparqlStringLiteral(cursor)})` : '';
 }
 
 export class EulDataClient
@@ -76,11 +89,13 @@ SELECT DISTINCT ?celex ?title WHERE {
   ?expr cdm:expression_belongs_to_work ?work .
   ?expr cdm:expression_uses_language <http://publications.europa.eu/resource/authority/language/${lang3}> .
   ?expr cdm:expression_title ?title .
-  FILTER(CONTAINS(LCASE(?title), LCASE("${query.replace(/"/g, '\\"')}")))
-} LIMIT ${options.limit ?? 10}`;
-    const response = await this.http.get(SPARQL_URL, {
+  FILTER(CONTAINS(LCASE(?title), LCASE(${sparqlStringLiteral(query)})))
+} LIMIT ${Math.min(Math.max(1, options.limit ?? 10), 100)}`;
+    const response = await safeAxiosGet<SparqlResponse>(this.http, SPARQL_URL, EUL_SPARQL_POLICY, {
       params: { query: sparql },
       headers: { 'Accept': 'application/sparql-results+json' },
+      timeout: 30_000,
+      maxContentLength: 10 * 1024 * 1024,
     });
     const bindings = response.data.results?.bindings ?? [];
     return bindings.map((binding: Record<string, { value?: string }>) => ({
@@ -91,14 +106,26 @@ SELECT DISTINCT ?celex ?title WHERE {
   }
 
   async getLegislation(celex: string, language = 'DE'): Promise<string> {
-    const response = await this.http.get<string>(`${CELLAR_BASE}/${celex}`, {
+    if (!CELEX_PATTERN.test(celex)) throw new Error(`Invalid CELEX identifier: ${celex}`);
+    const normalizedLanguage = language.toUpperCase();
+    if (!/^[A-Z]{2}$/.test(normalizedLanguage)) {
+      throw new Error(`Invalid EUR-Lex language: ${language}`);
+    }
+    const response = await safeAxiosGet<string>(
+      this.http,
+      `${EURLEX_HTML}/${normalizedLanguage}/TXT/HTML/`,
+      EUL_DOCUMENT_POLICY,
+      {
+      params: { uri: `CELEX:${celex.toUpperCase()}` },
       headers: {
         'Accept': 'text/html, application/xhtml+xml',
-        'Accept-Language': `${language.toLowerCase()}, en;q=0.8`,
+        'Accept-Language': `${normalizedLanguage.toLowerCase()}, en;q=0.8`,
       },
-      maxRedirects: 5,
+      timeout: 30_000,
+      maxContentLength: 25 * 1024 * 1024,
       responseType: 'text',
-    });
+      },
+    );
     return this.converter.convert(response.data);
   }
 
@@ -159,7 +186,7 @@ SELECT DISTINCT ?celex ?title WHERE {
     const language = (options.language ?? 'DE').toUpperCase();
     const lang3 = LANG_MAP[language] || 'DEU';
     const sinceFilter = options.since
-      ? `FILTER(?date >= "${options.since.slice(0, 10)}"^^xsd:date)`
+      ? `FILTER(?date >= "${isoDateLiteral(options.since)}"^^xsd:date)`
       : '';
     const sparql = `PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
 PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
@@ -171,10 +198,12 @@ SELECT DISTINCT ?celex ?title ?date WHERE {
   ?expr cdm:expression_title ?title .
   ${sinceFilter}
   ${keysetFilter(options.cursor)}
-} ORDER BY ?celex LIMIT ${options.limit ?? DEFAULT_ENUMERATION_LIMIT}`;
-    const response = await this.http.get(SPARQL_URL, {
+} ORDER BY ?celex LIMIT ${Math.min(Math.max(1, options.limit ?? DEFAULT_ENUMERATION_LIMIT), MAX_ENUMERATION_LIMIT)}`;
+    const response = await safeAxiosGet<SparqlResponse>(this.http, SPARQL_URL, EUL_SPARQL_POLICY, {
       params: { query: sparql },
       headers: { 'Accept': 'application/sparql-results+json' },
+      timeout: 30_000,
+      maxContentLength: 10 * 1024 * 1024,
     });
     const bindings = response.data.results?.bindings ?? [];
     return bindings.map((binding: Record<string, { value?: string }>) => ({

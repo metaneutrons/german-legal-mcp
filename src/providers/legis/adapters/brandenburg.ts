@@ -3,6 +3,8 @@ import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import type { LegisAdapter, SearchResult, LegisEntry } from '../types.js';
 import { rankSearchResults, type RankableSearchResult } from './search-ranking.js';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { LEGIS_BRANDENBURG_POLICY } from '../network-policy.js';
 
 const BASE = 'https://bravors.brandenburg.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
@@ -45,12 +47,14 @@ export class BrandenburgAdapter implements LegisAdapter {
     const allResults: RankableSearchResult[] = [];
 
     for (const term of searchVariants(query)) {
-      const page = await axios.get(`${BASE}/de/vorschriften_schnellsuche`);
+      const page = await safeAxiosGet(axios, `${BASE}/de/vorschriften_schnellsuche`, LEGIS_BRANDENBURG_POLICY);
       const cookies = page.headers['set-cookie']?.map((c: string) => c.split(';')[0]).join('; ');
 
-      const resp = await axios.post<string>(
+      const resp = await safeAxiosPost<string>(
+        axios,
         `${BASE}/de/vorschriften_schnellsuche`,
         `search%5Bsearchterm%5D=${encodeURIComponent(term)}&search%5Bart_vorschrift%5D=alle&suchen=Suchen`,
+        LEGIS_BRANDENBURG_POLICY,
         {
           headers: { 'Content-Type': 'application/x-www-form-urlencoded', Cookie: cookies || '' },
           maxRedirects: 5,
@@ -84,7 +88,7 @@ export class BrandenburgAdapter implements LegisAdapter {
   }
 
   async get(_state: string, id: string): Promise<LegisEntry> {
-    const resp = await axios.get<string>(`${BASE}/${id}`);
+    const resp = await safeAxiosGet<string>(axios, `${BASE}/${id}`, LEGIS_BRANDENBURG_POLICY);
     const $ = load(resp.data);
 
     const title = $('title').text().trim();

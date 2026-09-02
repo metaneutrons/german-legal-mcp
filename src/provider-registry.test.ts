@@ -1,19 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 import type {
   Provider,
   ToolDefinition,
 } from './shared/types.js';
 import type { ProviderComponentReference } from './contracts/provider-component.js';
-import { ProviderRegistry } from './provider-registry.js';
+import { ProviderRegistry, type ProviderLoadFailure } from './provider-registry.js';
 import { ConfigurationError } from './config.js';
 
-function fixtureProvider(name: string): Provider {
+function fixtureProvider(name: string, toolName = `${name}_search`): Provider {
   return {
     name,
     getTools: (): ToolDefinition[] => [{
-      name: `${name}:search`,
+      name: toolName,
       description: 'Fixture search',
-      inputSchema: { toJSONSchema: () => ({}) } as ToolDefinition['inputSchema'],
+      inputSchema: z.object({}),
     }],
     handleToolCall: vi.fn(async () => ({
       content: [{ type: 'text', text: name }],
@@ -44,6 +45,7 @@ function manifestEntry(name: string, provider: Provider | null): ProviderCompone
             tableOfContents: false,
             authentication: false,
             status: false,
+            enumeration: false,
           },
         },
         createMcpProvider: () => provider,
@@ -67,8 +69,8 @@ describe('ProviderRegistry', () => {
     await registry.load();
 
     expect(registry.getProviders()).toEqual([provider]);
-    expect(registry.getTools().map((tool) => tool.name)).toEqual(['fixture:search']);
-    await expect(registry.handleToolCall('fixture:search', {})).resolves.toEqual({
+    expect(registry.getTools().map((tool) => tool.name)).toEqual(['fixture_search']);
+    await expect(registry.handleToolCall('fixture_search', {})).resolves.toEqual({
       content: [{ type: 'text', text: 'fixture' }],
     });
     await registry.shutdown();
@@ -109,6 +111,7 @@ describe('ProviderRegistry', () => {
               tableOfContents: false,
               authentication: false,
               status: false,
+              enumeration: false,
             },
           },
           createMcpProvider: () => {
@@ -130,7 +133,7 @@ describe('ProviderRegistry', () => {
     expect(failures.map((f) => f.provider)).toEqual(['bad']);
     expect(failures[0]?.error).toBeInstanceOf(ConfigurationError);
     expect(registry.getProviders()).toEqual([good]);
-    expect(registry.getTools().map((t) => t.name)).toEqual(['good:search']);
+    expect(registry.getTools().map((t) => t.name)).toEqual(['good_search']);
   });
 
   it('removes a provider that fails to initialize', async () => {
@@ -145,6 +148,36 @@ describe('ProviderRegistry', () => {
 
     expect(failures).toEqual(['flaky']);
     expect(registry.getProviders()).toEqual([]);
+    expect(flaky.shutdown).toHaveBeenCalledOnce();
+  });
+
+  it('validates, defaults and strips arguments before provider dispatch', async () => {
+    const provider = fixtureProvider('fixture');
+    provider.getTools = () => [{
+      name: 'fixture_search',
+      description: 'Fixture search',
+      inputSchema: z.object({
+        query: z.string().min(3),
+        limit: z.number().int().max(10).default(5),
+      }),
+    }];
+    const registry = new ProviderRegistry([manifestEntry('fixture', provider)]);
+    await registry.load();
+
+    await expect(registry.handleToolCall('fixture_search', {
+      query: 'valid',
+      ignored: 'removed',
+    })).resolves.toEqual({ content: [{ type: 'text', text: 'fixture' }] });
+    expect(provider.handleToolCall).toHaveBeenCalledWith('fixture_search', {
+      query: 'valid',
+      limit: 5,
+    });
+
+    await expect(registry.handleToolCall('fixture_search', {
+      query: 'x',
+      limit: 99,
+    })).resolves.toMatchObject({ isError: true });
+    expect(provider.handleToolCall).toHaveBeenCalledTimes(1);
   });
 
   it('returns a stable unknown-tool result', async () => {
@@ -152,5 +185,76 @@ describe('ProviderRegistry', () => {
     await expect(registry.handleToolCall('invalid', {})).resolves.toMatchObject({
       isError: true,
     });
+  });
+
+  it('accepts legacy colon aliases without advertising them', async () => {
+    const provider = fixtureProvider('fixture');
+    const registry = new ProviderRegistry([manifestEntry('fixture', provider)]);
+    await registry.load();
+
+    await expect(registry.handleToolCall('fixture:search', {})).resolves.toEqual({
+      content: [{ type: 'text', text: 'fixture' }],
+    });
+    expect(provider.handleToolCall).toHaveBeenCalledWith('fixture_search', {});
+    expect(registry.getTools().map(({ name }) => name)).toEqual(['fixture_search']);
+  });
+
+  it('propagates an explicit request context without changing context-free dispatch', async () => {
+    const provider = fixtureProvider('fixture');
+    const registry = new ProviderRegistry([manifestEntry('fixture', provider)]);
+    const signal = new globalThis.AbortController().signal;
+    await registry.load();
+
+    await registry.handleToolCall('fixture_search', {}, { signal });
+
+    expect(provider.handleToolCall).toHaveBeenCalledWith(
+      'fixture_search',
+      {},
+      { signal },
+    );
+  });
+
+  it('disables a provider that declares a non-canonical tool name', async () => {
+    const failures: Array<{ provider: string; error: unknown }> = [];
+    const registry = new ProviderRegistry([
+      manifestEntry('fixture', fixtureProvider('fixture', 'fixture:search')),
+    ]);
+
+    await registry.load((failure) => failures.push(failure));
+
+    expect(registry.getProviders()).toEqual([]);
+    expect(registry.getTools()).toEqual([]);
+    expect(failures).toHaveLength(1);
+    expect(String(failures[0]?.error)).toContain('unsupported tool name');
+  });
+
+  it('rejects a second load without corrupting the loaded registry', async () => {
+    const provider = fixtureProvider('fixture');
+    const registry = new ProviderRegistry([manifestEntry('fixture', provider)]);
+    await registry.load();
+
+    await expect(registry.load()).rejects.toThrow('may only be called once');
+    expect(registry.getProviders()).toEqual([provider]);
+    expect(registry.getTools().map(({ name }) => name)).toEqual(['fixture_search']);
+    await expect(registry.handleToolCall('fixture_search', {})).resolves.toEqual({
+      content: [{ type: 'text', text: 'fixture' }],
+    });
+  });
+
+  it('reports a duplicate manifest id without removing the first provider', async () => {
+    const first = fixtureProvider('fixture');
+    const duplicate = fixtureProvider('fixture');
+    const failures: ProviderLoadFailure[] = [];
+    const registry = new ProviderRegistry([
+      manifestEntry('fixture', first),
+      manifestEntry('fixture', duplicate),
+    ]);
+
+    await registry.load((failure) => failures.push(failure));
+
+    expect(failures).toHaveLength(1);
+    expect(String(failures[0]?.error)).toContain('Duplicate provider manifest id');
+    expect(registry.getProviders()).toEqual([first]);
+    expect(registry.getTools().map(({ name }) => name)).toEqual(['fixture_search']);
   });
 });

@@ -48,7 +48,7 @@ export interface RisSearchHit {
   bundesland?: string | undefined;
   /** Canonical human/permalink URL (Metadaten.Allgemein.DokumentUrl). */
   documentUrl?: string | undefined;
-  /** Direct HTML content URL of the main document, for `ris:get`. */
+  /** Direct HTML content URL of the main document, for `ris_get`. */
   contentUrl?: string | undefined;
   /** For a Rechtssatz: the full decision texts it derives from, newest first. */
   decisionTexts?: RisDecisionRef[] | undefined;

@@ -31,7 +31,10 @@ function fakeClient(over: Partial<Record<keyof NautosClient, unknown>> = {}): Na
 }
 
 const dirs: string[] = [];
-afterEach(async () => { await Promise.all(dirs.splice(0).map((d) => rm(d, { recursive: true, force: true }))); });
+afterEach(async () => {
+  vi.unstubAllEnvs();
+  await Promise.all(dirs.splice(0).map((d) => rm(d, { recursive: true, force: true })));
+});
 
 describe('nautos handleGetDocument', () => {
   it('fetches and renders an outline with the table of contents', async () => {
@@ -61,6 +64,7 @@ describe('nautos handleGetDocument', () => {
   it('saves the full document and then serves a heading search from cache', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'nautos-doc-'));
     dirs.push(dir);
+    vi.stubEnv('GLMCP_EXPORT_DIR', dir);
     const file = join(dir, 'norm.md');
     const client = fakeClient();
     const code = acCode();

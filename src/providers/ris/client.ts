@@ -1,8 +1,10 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import { HTTP_USER_AGENT } from '../../config.js';
+import { safeAxiosGet } from '../../shared/network-policy.js';
 import { toArray } from './types.js';
 import { RisApiError } from './errors.js';
+import { RIS_API_POLICY, RIS_DOCUMENT_POLICY } from './network-policy.js';
 import type {
   OgdMetadaten,
   OgdReference,
@@ -19,7 +21,7 @@ const BASE_URL = 'https://data.bka.gv.at/ris/api/v2.6';
 /**
  * Hard cap on every RIS request. The search API (data.bka.gv.at) answers in
  * well under a second, but the document server (www.ris.bka.gv.at) can hang
- * indefinitely on some large pages — without a timeout `ris:get` would never
+ * indefinitely on some large pages — without a timeout `ris_get` would never
  * return. Fail fast instead.
  */
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -90,7 +92,7 @@ export class RisClient {
       params['Sortierung.SortDirection'] = 'Descending';
     }
 
-    const res = await this.http.get<OgdResponse>(`${BASE_URL}/${APP_PATH[application]}`, {
+    const res = await safeAxiosGet<OgdResponse>(this.http, `${BASE_URL}/${APP_PATH[application]}`, RIS_API_POLICY, {
       params,
       headers: { 'User-Agent': HTTP_USER_AGENT },
       timeout: REQUEST_TIMEOUT_MS,
@@ -120,7 +122,7 @@ export class RisClient {
       if (opts.bundesland) params[`Bundesland.SucheIn${opts.bundesland}`] = 'true';
     }
 
-    const res = await this.http.get<OgdResponse>(`${BASE_URL}/${APP_PATH[application]}`, {
+    const res = await safeAxiosGet<OgdResponse>(this.http, `${BASE_URL}/${APP_PATH[application]}`, RIS_API_POLICY, {
       params,
       headers: { 'User-Agent': HTTP_USER_AGENT },
       timeout: REQUEST_TIMEOUT_MS,
@@ -153,7 +155,7 @@ export class RisClient {
       if (opts.bundesland) params[`Bundesland.SucheIn${opts.bundesland}`] = 'true';
     }
 
-    const res = await this.http.get<OgdResponse>(`${BASE_URL}/${APP_PATH[application]}`, {
+    const res = await safeAxiosGet<OgdResponse>(this.http, `${BASE_URL}/${APP_PATH[application]}`, RIS_API_POLICY, {
       params,
       headers: { 'User-Agent': HTTP_USER_AGENT },
       timeout: REQUEST_TIMEOUT_MS,
@@ -170,7 +172,7 @@ export class RisClient {
   }
 
   async fetchHtml(url: string, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<string> {
-    const res = await this.http.get<string>(url, {
+    const res = await safeAxiosGet<string>(this.http, url, RIS_DOCUMENT_POLICY, {
       headers: { 'User-Agent': HTTP_USER_AGENT },
       timeout: timeoutMs,
     });

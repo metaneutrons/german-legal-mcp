@@ -3,6 +3,8 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import TurndownService from 'turndown';
 import type { LegisAdapter, SearchResult, LegisEntry } from '../types.js';
+import { safeAxiosGet, safeAxiosPost } from '../../../shared/network-policy.js';
+import { LEGIS_BAYERN_POLICY } from '../network-policy.js';
 
 const BASE = 'https://www.gesetze-bayern.de';
 const turndown = new TurndownService({ headingStyle: 'atx' });
@@ -12,14 +14,18 @@ export class BayernAdapter implements LegisAdapter {
 
   async search(_state: string, query: string, limit: number): Promise<SearchResult[]> {
     // Get CSRF token + cookies
-    const page = await axios.get<string>(`${BASE}/Search`, { headers: { 'User-Agent': HTTP_USER_AGENT } });
+    const page = await safeAxiosGet<string>(axios, `${BASE}/Search`, LEGIS_BAYERN_POLICY, {
+      headers: { 'User-Agent': HTTP_USER_AGENT },
+    });
     const cookies = page.headers['set-cookie']?.map((c: string) => c.split(';')[0]).join('; ');
     const $ = load(page.data);
     const token = $('input[name=__RequestVerificationToken]').val();
 
-    const resp = await axios.post<string>(
+    const resp = await safeAxiosPost<string>(
+      axios,
       `${BASE}/Search`,
       `SearchFields.Content=${encodeURIComponent(query)}&__RequestVerificationToken=${encodeURIComponent(String(token))}`,
+      LEGIS_BAYERN_POLICY,
       {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -43,7 +49,7 @@ export class BayernAdapter implements LegisAdapter {
   }
 
   async get(_state: string, id: string): Promise<LegisEntry> {
-    const resp = await axios.get<string>(`${BASE}/Content/Document/${id}`);
+    const resp = await safeAxiosGet<string>(axios, `${BASE}/Content/Document/${id}`, LEGIS_BAYERN_POLICY);
     const $ = load(resp.data);
 
     const title = $('title').text().replace(' - Bürgerservice', '').trim();

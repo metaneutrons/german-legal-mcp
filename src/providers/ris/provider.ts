@@ -10,24 +10,10 @@ import { parseToc } from './toc.js';
 import { DiskTocCache, type RisTocCache } from './toc-cache.js';
 import { risTools } from './tools/index.js';
 import type { RisApplication, RisSort } from './types.js';
+import { normalizeToolName } from '../../shared/tool-names.js';
+import { assertRisDocumentUrl, buildRisDocumentUrl } from './network-policy.js';
 
 const logger = rootLogger.child({ module: 'ris-provider' });
-
-/**
- * Content-URL folder for a RIS applikation. Usually the applikation IS the
- * folder (Justiz, BgblAuth, …), but consolidated law is the exception: the
- * applikation is "BrKons"/"LrKons" while the document folder is
- * "Bundesnormen"/"Landesnormen".
- */
-const APPLIKATION_FOLDER: Record<string, string> = {
-  BrKons: 'Bundesnormen',
-  LrKons: 'Landesnormen',
-};
-
-function deriveHtmlUrl(applikation: string, id: string): string {
-  const folder = APPLIKATION_FOLDER[applikation] ?? applikation;
-  return `https://www.ris.bka.gv.at/Dokumente/${folder}/${id}/${id}.html`;
-}
 
 export class RisProvider implements Provider {
   readonly name = 'ris';
@@ -47,10 +33,11 @@ export class RisProvider implements Provider {
   }
 
   async handleToolCall(toolName: string, args: Record<string, unknown>): Promise<ToolResult> {
-    if (toolName === 'ris:search') return this.handleSearch(args);
-    if (toolName === 'ris:get') return this.handleGet(args);
-    if (toolName === 'ris:get_norm') return this.handleGetNorm(args);
-    if (toolName === 'ris:toc') return this.handleGetToc(args);
+    const canonicalName = normalizeToolName(toolName);
+    if (canonicalName === 'ris_search') return this.handleSearch(args);
+    if (canonicalName === 'ris_get') return this.handleGet(args);
+    if (canonicalName === 'ris_get_norm') return this.handleGetNorm(args);
+    if (canonicalName === 'ris_toc') return this.handleGetToc(args);
     return { content: [{ type: 'text', text: `Unknown tool: ${toolName}` }], isError: true };
   }
 
@@ -75,7 +62,7 @@ export class RisProvider implements Provider {
       limit?: number;
     };
 
-    logger.info('Searching', { application, query, sort, bundesland });
+    logger.info('Searching', { application, queryLength: query.length, sort, bundesland });
     const result = await this.client.searchRis(application, { query, court, bundesland, sort, limit });
 
     if (result.hits.length === 0) {
@@ -89,11 +76,11 @@ export class RisProvider implements Provider {
         if (meta) lines.push(`   - ${meta}`);
         if (h.contentUrl) lines.push(`   - url: ${h.contentUrl}`);
         // A Rechtssatz links to full decisions — point at the newest so the
-        // caller can fetch it with ris:get id=<…> applikation=Justiz.
+        // caller can fetch it with ris_get id=<…> applikation=Justiz.
         const newest = h.decisionTexts?.[0];
         if (newest) {
           lines.push(
-            `   - full decision: \`${newest.id}\`${newest.date ? ` (${newest.date})` : ''} → ris:get id=<…> applikation=${h.applikation}`,
+            `   - full decision: \`${newest.id}\`${newest.date ? ` (${newest.date})` : ''} → ris_get id=<…> applikation=${h.applikation}`,
           );
         }
         return lines.join('\n');
@@ -116,10 +103,14 @@ export class RisProvider implements Provider {
       save_path?: string;
     };
 
-    const url = content_url ?? (id && applikation ? deriveHtmlUrl(applikation, id) : undefined);
+    const url = content_url
+      ? assertRisDocumentUrl(content_url)
+      : id && applikation
+        ? buildRisDocumentUrl(applikation, id)
+        : undefined;
     if (!url) {
       return {
-        content: [{ type: 'text', text: 'ris:get requires `content_url`, or `id` + `applikation`.' }],
+        content: [{ type: 'text', text: 'ris_get requires `content_url`, or `id` + `applikation`.' }],
         isError: true,
       };
     }
@@ -167,7 +158,7 @@ export class RisProvider implements Provider {
       };
     }
 
-    const html = await this.client.fetchHtml(hit.contentUrl);
+    const html = await this.client.fetchHtml(assertRisDocumentUrl(hit.contentUrl));
     const markdown = risHtmlToMarkdown(html);
     validateConversion(markdown, 'RIS (Austria)');
 
@@ -210,7 +201,7 @@ export class RisProvider implements Provider {
       logger.info('Table of contents served from cache', { law, entries: cached.entries.length });
       entries = cached.entries;
     } else {
-      const html = await this.client.fetchHtml(source.url, 90_000);
+      const html = await this.client.fetchHtml(assertRisDocumentUrl(source.url), 90_000);
       entries = parseToc(html);
       if (entries.length > 0) {
         // A cache-write failure must not fail an otherwise-successful fetch.
@@ -227,7 +218,7 @@ export class RisProvider implements Provider {
     const body =
       `# ${source.title} — Inhaltsverzeichnis (${entries.length} §§)\n\n` +
       `${lines.join('\n')}\n\n` +
-      `_Read a paragraph with ris:get_norm law="${law}" paragraph="<§>"._`;
+      `_Read a paragraph with ris_get_norm law="${law}" paragraph="<§>"._`;
 
     if (save_path) return saveToFile(save_path, body, `${source.title} — Inhaltsverzeichnis`);
     return { content: [{ type: 'text', text: body }] };

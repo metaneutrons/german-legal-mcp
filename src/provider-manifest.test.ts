@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { ENVIRONMENT_VARIABLES } from './config.js';
 import { getProviderManifest, PROVIDER_MANIFEST } from './provider-manifest.js';
+import { isCanonicalToolName } from './shared/tool-names.js';
 
 describe('provider manifest', () => {
   it('has unique component ids', () => {
@@ -44,6 +45,17 @@ describe('provider manifest', () => {
     }
   });
 
+  it('advertises only portable tool names in the MCPB manifest', () => {
+    const manifest = JSON.parse(
+      readFileSync(join(process.cwd(), 'manifest.json'), 'utf-8'),
+    ) as { tools: Array<{ name: string }> };
+
+    expect(manifest.tools.length).toBeGreaterThan(0);
+    for (const { name } of manifest.tools) {
+      expect(isCanonicalToolName(name), `unsupported MCPB tool name: ${name}`).toBe(true);
+    }
+  });
+
   it('filters by distribution without mutating the manifest', () => {
     expect(getProviderManifest()).toBe(PROVIDER_MANIFEST);
     expect(getProviderManifest('public').map((entry) => entry.id)).toEqual([
@@ -76,10 +88,11 @@ describe('rights declarations', () => {
     const root = join(process.cwd(), 'src', 'providers');
     const out: { file: string; redistribution: string; licence?: string }[] = [];
     const walk = (dir: string) => {
-      for (const name of readdirSync(dir)) {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const { name } = entry;
         const full = join(dir, name);
-        if (statSync(full).isDirectory()) { walk(full); continue; }
-        if (!name.endsWith('.ts') || name.includes('.test.')) continue;
+        if (entry.isDirectory()) { walk(full); continue; }
+        if (!entry.isFile() || !name.endsWith('.ts') || name.includes('.test.')) continue;
         const src = readFileSync(full, 'utf-8');
         // Capture the whole rights literal, then read fields from it — a
         // line-anchored pattern silently reports a missing licence when the
@@ -97,7 +110,7 @@ describe('rights declarations', () => {
   /** Provider directories actually present, which differs by distribution. */
   function providerCount(): number {
     const root = join(process.cwd(), 'src', 'providers');
-    return readdirSync(root).filter((name) => statSync(join(root, name)).isDirectory()).length;
+    return readdirSync(root, { withFileTypes: true }).filter((entry) => entry.isDirectory()).length;
   }
 
   it('declares an SPDX licence beside every redistribution policy', () => {
