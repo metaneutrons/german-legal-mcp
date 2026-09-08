@@ -1,0 +1,32 @@
+# Canonical Dependabot policy for the public mirror. This file is applied to
+# the public repository through a separately reviewed governance change; the
+# source sync verifies it byte-for-byte and never mutates public `.github/`.
+version: 2
+updates:
+  # package.json and package-lock.json are generated from the private source
+  # SSOT. Public npm update PRs would edit generated outputs and be overwritten
+  # by the next reviewed sync, so only public-owned workflow dependencies live
+  # here.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    target-branch: "main"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci(deps)"
+      include: "scope"
+    groups:
+      github-actions-minor-patch:
+        applies-to: version-updates
+        update-types:
+          - "minor"
+          - "patch"

@@ -1,0 +1,84 @@
+{
+  "OgdSearchResult": {
+    "OgdDocumentResults": {
+      "Hits": {
+        "@pageNumber": "1",
+        "@pageSize": "10",
+        "#text": "1"
+      },
+      "OgdDocumentReference": [
+        {
+          "Data": {
+            "Metadaten": {
+              "Technisch": {
+                "ID": "NOR12019037",
+                "Applikation": "BrKons",
+                "Organ": "BKA (Bundeskanzleramt)",
+                "ImportTimestamp": {
+                  "@xsi:nil": "true",
+                  "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+                }
+              },
+              "Allgemein": {
+                "Geaendert": "2017-11-21",
+                "DokumentUrl": "https://www.ris.bka.gv.at/eli/jgs/1811/946/P1295/NOR12019037"
+              },
+              "Bundesrecht": {
+                "Kurztitel": "Allgemeines bürgerliches Gesetzbuch",
+                "Eli": "https://www.ris.bka.gv.at/eli/jgs/1811/946/P1295/NOR12019037",
+                "BrKons": {
+                  "Kundmachungsorgan": "JGS Nr. 946/1811 zuletzt geändert durch RGBl. Nr. 69/1916 ",
+                  "Typ": "BG",
+                  "Dokumenttyp": "Paragraph",
+                  "ArtikelParagraphAnlage": "§ 1295",
+                  "Paragraphnummer": "1295",
+                  "StammnormPublikationsorgan": "JGS Nr.",
+                  "StammnormBgblnummer": "946/1811",
+                  "NovellenPublikationsorgan": "RGBl. Nr.",
+                  "NovellenBgblnummer": "69/1916",
+                  "NovellenBeziehung": "zuletzt geändert durch",
+                  "Inkrafttretensdatum": "1917-01-01",
+                  "Abkuerzung": "ABGB",
+                  "Indizes": {
+                    "item": "20/01 Allgemeines bürgerliches Gesetzbuch (ABGB)"
+                  },
+                  "Aenderung": "",
+                  "Schlagworte": "Vertragsverletzung, Delikt, Schikane",
+                  "Gesetzesnummer": "10001622",
+                  "AlteDokumentnummer": "N2181111519Z",
+                  "GesamteRechtsvorschriftUrl": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10001622"
+                }
+              }
+            },
+            "Dokumentliste": {
+              "ContentReference": {
+                "ContentType": "MainDocument",
+                "Name": "Hauptdokument",
+                "Urls": {
+                  "ContentUrl": [
+                    {
+                      "DataType": "Xml",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.xml"
+                    },
+                    {
+                      "DataType": "Html",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.html"
+                    },
+                    {
+                      "DataType": "Rtf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.rtf"
+                    },
+                    {
+                      "DataType": "Pdf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12019037/NOR12019037.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

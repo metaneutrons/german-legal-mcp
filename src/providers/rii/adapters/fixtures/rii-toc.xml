@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE items [
+ <!ELEMENT items (item)*>
+ <!ELEMENT item (gericht?,entsch-datum?,aktenzeichen?,link,modified)>
+ <!ELEMENT gericht (#PCDATA)>
+ <!ELEMENT entsch-datum (#PCDATA)>
+ <!ELEMENT aktenzeichen (#PCDATA)>
+ <!ELEMENT link (#PCDATA)>
+ <!ELEMENT modified (#PCDATA)>
+]>
+<!-- generator:jps10-V37_33_00_production 17.07.2026 13:03:04, lastBuildDate:06.08.2026 23:36:18 -->
+<items>
+<item>
+ <gericht>BVerwG 9. Senat</gericht>
+ <entsch-datum>20100108</entsch-datum>
+ <aktenzeichen>9 B 3/09</aktenzeichen>
+ <link>http://www.rechtsprechung-im-internet.de/jportal/docs/bsjrs/jb-JURE100054597.zip</link>
+ <modified>2025-06-23T21:55:54.378Z</modified>
+</item>
+<item>
+ <gericht>BGH 9. Zivilsenat</gericht>
+ <entsch-datum>20100114</entsch-datum>
+ <aktenzeichen>IX ZB 72/08</aktenzeichen>
+ <link>http://www.rechtsprechung-im-internet.de/jportal/docs/bsjrs/jb-KORE300012024.zip</link>
+ <modified>2026-04-14T21:14:20.772Z</modified>
+</item>
+<item>
+ <gericht>BGH Senat für Anwaltssachen</gericht>
+ <entsch-datum>20240301</entsch-datum>
+ <aktenzeichen>AnwZ (Brfg) 1/23 &amp; 2/23</aktenzeichen>
+ <link>http://www.rechtsprechung-im-internet.de/jportal/docs/bsjrs/jb-STRE201950123.zip</link>
+ <modified>2026-08-06T21:08:06.267Z</modified>
+</item>
+<item>
+ <gericht>BFH Großer Senat</gericht>
+ <entsch-datum>20250915</entsch-datum>
+ <aktenzeichen>GrS 1/24</aktenzeichen>
+ <link>http://www.rechtsprechung-im-internet.de/jportal/docs/bsjrs/jb-WBRE410000001.zip</link>
+ <modified>2026-08-06T21:08:06.267Z</modified>
+</item>
+</items>

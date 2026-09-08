@@ -1,0 +1,99 @@
+{
+  "OgdSearchResult": {
+    "OgdDocumentResults": {
+      "Hits": {
+        "@pageNumber": "1",
+        "@pageSize": "10",
+        "#text": "625"
+      },
+      "OgdDocumentReference": [
+        {
+          "Data": {
+            "Metadaten": {
+              "Technisch": {
+                "ID": "JWR_2024020082_20260423L06",
+                "Applikation": "Vwgh",
+                "Organ": "Verwaltungsgerichtshof (VwGH)",
+                "ImportTimestamp": {
+                  "@xsi:nil": "true",
+                  "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+                }
+              },
+              "Allgemein": {
+                "Veroeffentlicht": "2026-05-19",
+                "Geaendert": "2026-05-28",
+                "DokumentUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Vwgh&Dokumentnummer=JWR_2024020082_20260423L06"
+              },
+              "Judikatur": {
+                "Dokumenttyp": "Rechtssatz",
+                "Geschaeftszahl": {
+                  "item": "Ra 2024/02/0082"
+                },
+                "Normen": {
+                  "item": [
+                    "DSG §24",
+                    "DSG §37 Abs1 Z4",
+                    "EURallg",
+                    "32016R0679 DSGVO Art16",
+                    "32016R0679 DSGVO Art77",
+                    "32016R0679 DSGVO Art79"
+                  ]
+                },
+                "Entscheidungsdatum": "2026-04-23",
+                "Schlagworte": "Gemeinschaftsrecht Verordnung EURallg5",
+                "EuropeanCaseLawIdentifier": "ECLI:AT:VWGH:2026:RA2024020082.L05",
+                "Vwgh": {
+                  "Rechtssatznummer": "6",
+                  "Entscheidungsart": "Erkenntnis",
+                  "DokumentnummerTyp": "L",
+                  "Stammrechtssatznummer": "JWR_2025010073_20250403L02",
+                  "Gericht": "Verwaltungsgerichtshof (VwGH)",
+                  "Indizes": {
+                    "item": [
+                      "E000 EU- Recht allgemein",
+                      "E3R E15202000",
+                      "E3R E19400000",
+                      "10/10 Auskunftspflicht",
+                      "10/10 Datenschutz",
+                      "10/10 Grundrechte"
+                    ]
+                  },
+                  "HinweisAufStammrechtssatz": "GRS wie Ra 2025/01/0073 B 3. April 2025 RS 2 Zusatz: Der in § 24 DSG beschriebene Rechtsweg gilt ebenso für § 37 Abs. 1 Z 4 DSG.",
+                  "RechtssatzketteUrl": "https://www.ris.bka.gv.at/VwghRechtssatzkette.wxe?Abfrage=Vwgh&Dokumentnummer=JWR_2024020082_20260423L06"
+                },
+                "GesamteEntscheidungUrl": "https://www.ris.bka.gv.at/JudikaturEntscheidung.wxe?Abfrage=Vwgh&Dokumentnummer=JWR_2024020082_20260423L06",
+                "EntscheidungstextUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Vwgh&Dokumentnummer=JWT_2024020082_20260423L00"
+              }
+            },
+            "Dokumentliste": {
+              "ContentReference": {
+                "ContentType": "MainDocument",
+                "Name": "Hauptdokument",
+                "Urls": {
+                  "ContentUrl": [
+                    {
+                      "DataType": "Xml",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Vwgh/JWR_2024020082_20260423L06/JWR_2024020082_20260423L06.xml"
+                    },
+                    {
+                      "DataType": "Html",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Vwgh/JWR_2024020082_20260423L06/JWR_2024020082_20260423L06.html"
+                    },
+                    {
+                      "DataType": "Rtf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Vwgh/JWR_2024020082_20260423L06/JWR_2024020082_20260423L06.rtf"
+                    },
+                    {
+                      "DataType": "Pdf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Vwgh/JWR_2024020082_20260423L06/JWR_2024020082_20260423L06.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "OgdSearchResult": {
+    "OgdDocumentResults": {
+      "Hits": {
+        "@pageNumber": "1",
+        "@pageSize": "10",
+        "#text": "515"
+      },
+      "OgdDocumentReference": [
+        {
+          "Data": {
+            "Metadaten": {
+              "Technisch": {
+                "ID": "NOR12018914",
+                "Applikation": "BrKons",
+                "Organ": "BKA (Bundeskanzleramt)",
+                "ImportTimestamp": {
+                  "@xsi:nil": "true",
+                  "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+                }
+              },
+              "Allgemein": {
+                "Geaendert": "2015-04-08",
+                "DokumentUrl": "https://www.ris.bka.gv.at/eli/jgs/1811/946/P1172/NOR12018914"
+              },
+              "Bundesrecht": {
+                "Kurztitel": "Allgemeines bürgerliches Gesetzbuch",
+                "Eli": "https://www.ris.bka.gv.at/eli/jgs/1811/946/P1172/NOR12018914",
+                "BrKons": {
+                  "Kundmachungsorgan": "JGS Nr. 946/1811 zuletzt geändert durch BGBl. Nr. 111/1936 ",
+                  "Typ": "BG",
+                  "Dokumenttyp": "Paragraph",
+                  "ArtikelParagraphAnlage": "§ 1172",
+                  "Paragraphnummer": "1172",
+                  "StammnormPublikationsorgan": "JGS Nr.",
+                  "StammnormBgblnummer": "946/1811",
+                  "NovellenPublikationsorgan": "BGBl. Nr.",
+                  "NovellenBgblnummer": "111/1936",
+                  "NovellenBeziehung": "zuletzt geändert durch",
+                  "Inkrafttretensdatum": "1936-07-01",
+                  "Abkuerzung": "ABGB",
+                  "Indizes": {
+                    "item": "20/01 Allgemeines bürgerliches Gesetzbuch (ABGB)"
+                  },
+                  "Aenderung": "",
+                  "Anmerkung": "Siehe dazu das Urheberrechtsgesetz, BGBl. Nr. 111/1936.<br/>",
+                  "Gesetzesnummer": "10001622",
+                  "AlteDokumentnummer": "N2181111396Z",
+                  "GesamteRechtsvorschriftUrl": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=10001622"
+                }
+              }
+            },
+            "Dokumentliste": {
+              "ContentReference": {
+                "ContentType": "MainDocument",
+                "Name": "Hauptdokument",
+                "Urls": {
+                  "ContentUrl": [
+                    {
+                      "DataType": "Xml",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12018914/NOR12018914.xml"
+                    },
+                    {
+                      "DataType": "Html",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12018914/NOR12018914.html"
+                    },
+                    {
+                      "DataType": "Rtf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12018914/NOR12018914.rtf"
+                    },
+                    {
+                      "DataType": "Pdf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR12018914/NOR12018914.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

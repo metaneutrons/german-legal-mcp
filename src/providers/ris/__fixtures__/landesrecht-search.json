@@ -1,0 +1,92 @@
+{
+  "OgdSearchResult": {
+    "OgdDocumentResults": {
+      "Hits": {
+        "@pageNumber": "1",
+        "@pageSize": "10",
+        "#text": "304"
+      },
+      "OgdDocumentReference": [
+        {
+          "Data": {
+            "Metadaten": {
+              "Technisch": {
+                "ID": "LGBLA_TI_20260706_51",
+                "Applikation": "LgblAuth",
+                "Organ": "LReg Tirol",
+                "ImportTimestamp": {
+                  "@xsi:nil": "true",
+                  "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+                }
+              },
+              "Allgemein": {
+                "DokumentUrl": "https://www.ris.bka.gv.at/eli/lgbl/TI/2026/51/20260706"
+              },
+              "Landesrecht": {
+                "Kurztitel": "Änderung der Tiroler Bauordnung 2022, des Tiroler Gas-, Heizungs- und Klimaanlagengesetzes 2013, des Tiroler Energieeffizienzgesetzes, des Tiroler Wohnbauförderungsgesetzes 1991, des Tiroler Bauproduktegesetzes 2016, des Tiroler Aufzugs- und Hebeanlagengesetzes 2012, des Tiroler Stadt- und Ortsbildschutzgesetzes 2021, des Tiroler Raumordnungsgesetzes 2022 und des Gesetzes über begleitende Maßnahmen zur Durchführung bestimmter Rechtsvorschriften der Europäischen Union im Bereich der Tiroler Landesrechtsordnung",
+                "Titel": "Gesetz vom 1. Juli 2026, mit dem die Tiroler Bauordnung 2022, das Tiroler Gas-, Heizungs- und Klimaanlagengesetz 2013, das Tiroler Energieeffizienzgesetz, das Tiroler Wohnbauförderungsgesetz 1991, das Tiroler Bauproduktegesetz 2016, das Tiroler Aufzugs- und Hebeanlagengesetz 2012, das Tiroler Stadt- und Ortsbildschutzgesetz 2021, das Tiroler Raumordnungsgesetz 2022 und das Gesetz über begleitende Maßnahmen zur Durchführung bestimmter Rechtsvorschriften der Europäischen Union im Bereich der Tiroler Landesrechtsordnung geändert werden",
+                "Kundmachungsdatum": "2026-07-06",
+                "Bundesland": "Tirol",
+                "LgblAuth": {
+                  "Lgblnummer": "LGBl. Nr. 51/2026",
+                  "Typ": "Landesgesetz",
+                  "Materialien": "133/26",
+                  "MaterialienLink": "https://lte.tirol.gv.at/public/ggs/risLink.xhtml?gn=133&gj=2026",
+                  "CelexNummer": {
+                    "item": [
+                      "32024L1275",
+                      "32024L2749",
+                      "32020L2184",
+                      "32025R2273",
+                      "32025R1328",
+                      "32019R1020"
+                    ]
+                  },
+                  "EuropeanLegislationIdentifier": "https://www.ris.bka.gv.at/eli/lgbl/TI/2026/51/20260706"
+                }
+              }
+            },
+            "Dokumentliste": {
+              "ContentReference": [
+                {
+                  "ContentType": "MainDocument",
+                  "Name": "Hauptdokument",
+                  "Urls": {
+                    "ContentUrl": [
+                      {
+                        "DataType": "Xml",
+                        "Url": "https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_20260706_51/LGBLA_TI_20260706_51.xml"
+                      },
+                      {
+                        "DataType": "Html",
+                        "Url": "https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_20260706_51/LGBLA_TI_20260706_51.html"
+                      },
+                      {
+                        "DataType": "Rtf",
+                        "Url": "https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_20260706_51/LGBLA_TI_20260706_51.rtf"
+                      },
+                      {
+                        "DataType": "Authentisch",
+                        "Url": "https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_20260706_51/LGBLA_TI_20260706_51.pdf"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "ContentType": "EmbeddedAttachment",
+                  "Name": "Landesgesetzblatt Tirol",
+                  "Urls": {
+                    "ContentUrl": {
+                      "DataType": "Jpg",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/LgblAuth/LGBLA_TI_20260706_51/image001.jpg"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

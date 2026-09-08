@@ -1,0 +1,3 @@
+# Code owners — GitHub uses this to request reviews on PRs (incl. Dependabot).
+# Replaces the `reviewers:` key in dependabot.yml, which GitHub removed in 2025.
+* @metaneutrons

@@ -1,0 +1,109 @@
+{
+  "OgdSearchResult": {
+    "OgdDocumentResults": {
+      "Hits": {
+        "@pageNumber": "1",
+        "@pageSize": "20",
+        "#text": "15"
+      },
+      "OgdDocumentReference": [
+        {
+          "Data": {
+            "Metadaten": {
+              "Technisch": {
+                "ID": "JJR_19960812_OGH0002_0040OB02161_96I0000_002",
+                "Applikation": "Justiz",
+                "Organ": "OGH",
+                "ImportTimestamp": {
+                  "@xsi:nil": "true",
+                  "@xmlns:xsi": "http://www.w3.org/2001/XMLSchema-instance"
+                }
+              },
+              "Allgemein": {
+                "Veroeffentlicht": "1997-06-15",
+                "Geaendert": "2023-06-05",
+                "DokumentUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Justiz&Dokumentnummer=JJR_19960812_OGH0002_0040OB02161_96I0000_002"
+              },
+              "Judikatur": {
+                "Dokumenttyp": "Rechtssatz",
+                "Geschaeftszahl": {
+                  "item": "4Ob2161/96i; 4Ob100/20i; 4Ob182/20y"
+                },
+                "Normen": {
+                  "item": [
+                    "ABGB §863 EI",
+                    "ABGB §863 H",
+                    "UrhG §24 Abs1"
+                  ]
+                },
+                "Entscheidungsdatum": "2020-12-10",
+                "EuropeanCaseLawIdentifier": "ECLI:AT:OGH0002:1996:RS0106668",
+                "Justiz": {
+                  "Rechtsgebiete": {
+                    "item": "Zivilrecht"
+                  },
+                  "Gericht": "OGH",
+                  "Rechtssatznummern": {
+                    "item": "RS0106668"
+                  },
+                  "Entscheidungstexte": {
+                    "item": [
+                      {
+                        "Geschaeftszahl": "4 Ob 2161/96i",
+                        "Dokumenttyp": "Text",
+                        "Gericht": "OGH",
+                        "Entscheidungsdatum": "1996-08-12",
+                        "DokumentUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Justiz&Dokumentnummer=JJT_19960812_OGH0002_0040OB02161_96I0000_000"
+                      },
+                      {
+                        "Geschaeftszahl": "4 Ob 100/20i",
+                        "Dokumenttyp": "Text",
+                        "Gericht": "OGH",
+                        "Entscheidungsdatum": "2020-08-11",
+                        "DokumentUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Justiz&Dokumentnummer=JJT_20200811_OGH0002_0040OB00100_20I0000_000"
+                      },
+                      {
+                        "Geschaeftszahl": "4 Ob 182/20y",
+                        "Dokumenttyp": "Text",
+                        "Gericht": "OGH",
+                        "Entscheidungsdatum": "2020-12-10",
+                        "Anmerkung": "Anm: Veröff: SZ 2020/118",
+                        "DokumentUrl": "https://www.ris.bka.gv.at/Dokument.wxe?Abfrage=Justiz&Dokumentnummer=JJT_20201210_OGH0002_0040OB00182_20Y0000_000"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "Dokumentliste": {
+              "ContentReference": {
+                "ContentType": "MainDocument",
+                "Name": "Hauptdokument",
+                "Urls": {
+                  "ContentUrl": [
+                    {
+                      "DataType": "Xml",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Justiz/JJR_19960812_OGH0002_0040OB02161_96I0000_002/JJR_19960812_OGH0002_0040OB02161_96I0000_002.xml"
+                    },
+                    {
+                      "DataType": "Html",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Justiz/JJR_19960812_OGH0002_0040OB02161_96I0000_002/JJR_19960812_OGH0002_0040OB02161_96I0000_002.html"
+                    },
+                    {
+                      "DataType": "Rtf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Justiz/JJR_19960812_OGH0002_0040OB02161_96I0000_002/JJR_19960812_OGH0002_0040OB02161_96I0000_002.rtf"
+                    },
+                    {
+                      "DataType": "Pdf",
+                      "Url": "https://www.ris.bka.gv.at/Dokumente/Justiz/JJR_19960812_OGH0002_0040OB02161_96I0000_002/JJR_19960812_OGH0002_0040OB02161_96I0000_002.pdf"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
