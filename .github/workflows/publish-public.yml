@@ -26,6 +26,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.ref }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
@@ -41,9 +42,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: node scripts/verify-release-destinations.mjs "$RELEASE_TAG"
-      - run: npm ci --ignore-scripts
-      - run: npm run verify
-      - run: npm audit --omit=dev --audit-level=moderate
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - run: pnpm run verify
+      - run: pnpm audit --prod --audit-level=moderate
 
   artifacts:
     needs: verify
@@ -59,20 +60,23 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.ref }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           package-manager-cache: false
-      - run: npm ci --ignore-scripts
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - run: node scripts/verify-public-release-ref.mjs "$RELEASE_TAG"
-      - run: npm run build
+      - run: pnpm run build
 
       - name: Pack and verify exact npm artifact
         id: npm_pack
         run: |
           mkdir release-artifacts
-          npm pack --ignore-scripts --json --pack-destination release-artifacts > "$RUNNER_TEMP/npm-pack.json"
-          filename=$(node -p "JSON.parse(require('fs').readFileSync(process.env.RUNNER_TEMP + '/npm-pack.json','utf8'))[0].filename")
+          pnpm pack --pack-destination release-artifacts
+          mapfile -t tarballs < <(find release-artifacts -maxdepth 1 -type f -name '*.tgz' -print)
+          test "${#tarballs[@]}" -eq 1
+          filename=$(basename "${tarballs[0]}")
           echo "filename=$filename" >> "$GITHUB_OUTPUT"
           echo "path=$GITHUB_WORKSPACE/release-artifacts/$filename" >> "$GITHUB_OUTPUT"
           node scripts/verify-package.mjs --tarball "$GITHUB_WORKSPACE/release-artifacts/$filename"
@@ -91,7 +95,7 @@ jobs:
           mkdir "$stage"
           git archive HEAD | tar -x -C "$stage"
           cp -R dist "$stage/dist"
-          (cd "$stage" && npm ci --omit=dev --ignore-scripts)
+          (cd "$stage" && pnpm install --prod --frozen-lockfile --ignore-scripts)
           node "$stage/scripts/prepare-mcpb-runtime.mjs" "$stage"
 
       - name: Verify production-only public MCPB tree
@@ -175,6 +179,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.ref }}
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v6.1.0
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
@@ -227,11 +232,17 @@ jobs:
             release-artifacts/provenance.intoto.jsonl \
             release-artifacts/SHA256SUMS
 
-          npm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
+          node scripts/verify-release-assets.mjs \
+            "$RELEASE_TAG" release-artifacts "$GITHUB_REPOSITORY"
+
+          pnpm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
             --ignore-scripts \
             --access public \
             --provenance \
             --registry https://registry.npmjs.org
+
+          node scripts/verify-published-package.mjs \
+            "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL"
 
           gh release edit "$RELEASE_TAG" \
             --repo "$GITHUB_REPOSITORY" \
