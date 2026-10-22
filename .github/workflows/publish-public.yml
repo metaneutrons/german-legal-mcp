@@ -237,6 +237,7 @@ jobs:
 
           pnpm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
             --ignore-scripts \
+            --no-git-checks \
             --access public \
             --provenance \
             --registry https://registry.npmjs.org
