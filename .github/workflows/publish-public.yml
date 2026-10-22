@@ -85,7 +85,7 @@ jobs:
         id: npm_sbom
         run: |
           path="$GITHUB_WORKSPACE/release-artifacts/german-legal-mcp-${{ needs.verify.outputs.version }}.sbom.cdx.json"
-          npm sbom --omit=dev --sbom-format cyclonedx > "$path"
+          pnpm sbom --prod --sbom-format cyclonedx > "$path"
           node -e "const s=require(process.argv[1]);if(!Array.isArray(s.components))throw new Error('Invalid SBOM')" "$path"
           echo "path=$path" >> "$GITHUB_OUTPUT"
 
@@ -110,7 +110,7 @@ jobs:
         id: mcpb_sbom
         run: |
           path="$GITHUB_WORKSPACE/release-artifacts/german-legal-mcp-${RELEASE_TAG}.sbom.cdx.json"
-          (cd "$RUNNER_TEMP/mcpb-stage" && npm sbom --omit=dev --sbom-format cyclonedx) > "$path"
+          (cd "$RUNNER_TEMP/mcpb-stage" && pnpm sbom --prod --sbom-format cyclonedx) > "$path"
           node -e "const s=require(process.argv[1]);if(!Array.isArray(s.components))throw new Error('Invalid SBOM')" "$path"
           echo "path=$path" >> "$GITHUB_OUTPUT"
 
