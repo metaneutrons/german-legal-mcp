@@ -16,7 +16,7 @@ export class RiiConverter {
         node.nodeName === 'A' &&
         (node.getAttribute('name') || '').startsWith('rd_'),
       replacement: (_content, node) => {
-        const name = (node as HTMLElement).getAttribute('name') || '';
+        const name = (node as { getAttribute(name: string): string | null }).getAttribute('name') || '';
         const num = name.replace('rd_', '');
         return `\n\n[Rn. ${num}]{.rn} `;
       },

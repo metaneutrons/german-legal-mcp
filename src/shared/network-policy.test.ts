@@ -230,6 +230,39 @@ describe('network policy', () => {
     )).rejects.toThrow(/literal-IP host/);
   });
 
+  it('validates a rewritten redirect target with the unchanged policy', async () => {
+    const get = vi.fn(async (url: string) => (url.endsWith('A_1.html')
+      ? { data: '', status: 303, headers: { location: 'http://provider.example/documents/B_2.html' } }
+      : { data: 'ok', status: 200, headers: {} }));
+    const http = { get } as unknown as Pick<AxiosInstance, 'get'>;
+
+    await expect(safeAxiosGet(http, 'https://provider.example/documents/A_1.html', policy))
+      .rejects.toThrow(/requires HTTPS/);
+
+    const upgrade = (location: URL) => location.toString().replace(/^http:/, 'https:');
+    const response = await safeAxiosGet(
+      http,
+      'https://provider.example/documents/A_1.html',
+      policy,
+      {},
+      { rewriteRedirect: upgrade },
+    );
+    expect(response.data).toBe('ok');
+    expect(get).toHaveBeenLastCalledWith(
+      'https://provider.example/documents/B_2.html',
+      expect.anything(),
+    );
+
+    get.mockResolvedValueOnce({ data: '', status: 303, headers: { location: 'http://127.0.0.1/x' } });
+    await expect(safeAxiosGet(
+      http,
+      'https://provider.example/documents/A_1.html',
+      policy,
+      {},
+      { rewriteRedirect: upgrade },
+    )).rejects.toThrow(/literal-IP host/);
+  });
+
   it('fails closed on a redirect response without a Location header', async () => {
     const get = vi.fn(async () => ({ data: '', status: 302, headers: {} }));
 

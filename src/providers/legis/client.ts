@@ -177,7 +177,7 @@ export class LegislationClient implements
     return {
       results,
       failures: settled.flatMap((result, index) => result.status === 'rejected'
-        ? [{ source: sources[index] ?? 'unknown', error: result.reason }]
+        ? [{ source: sources[index] ?? 'unknown', error: result.reason as unknown }]
         : []),
     };
   }
@@ -340,7 +340,10 @@ export class LegislationClient implements
       return { results: [], failures: [], origin: 'native' };
     }
     const requested = this.resolveSources(request.sourceIds, request.jurisdictions) ?? this.sources;
-    const enumerable = requested.filter((source) => this.adapterBySource.get(source)?.enumerate);
+    const enumerable = requested.filter((source) => {
+      const adapter = this.adapterBySource.get(source);
+      return typeof adapter?.enumerate === 'function';
+    });
     const resumed = request.cursor ? decodeCursor(request.cursor) : undefined;
     if (request.cursor && !resumed) throw new Error('Malformed enumeration cursor.');
 
@@ -367,7 +370,7 @@ export class LegislationClient implements
       const next = page.nextCursor
         ? encodeCursor({ source, cursor: page.nextCursor })
         : enumerable[index + 1] !== undefined
-          ? encodeCursor({ source: enumerable[index + 1] as string })
+          ? encodeCursor({ source: enumerable[index + 1]! })
           : undefined;
       if (page.results.length === 0 && next !== undefined) continue;
       return {

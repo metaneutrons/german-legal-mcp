@@ -39,6 +39,40 @@ export function liveEnabled(variable: string): boolean {
  * (400, 404) or any 5xx still fails, because those are real contract breaks.
  */
 const REFUSAL_STATUSES = new Set([403, 406, 429]);
+const TRANSIENT_NETWORK_CODES = new Set([
+  'ECONNABORTED',
+  'ECONNRESET',
+  'EAI_AGAIN',
+  'ETIMEDOUT',
+  'ENETUNREACH',
+]);
+
+function isTransientNetworkError(error: unknown): boolean {
+  const candidate = error as { code?: unknown; message?: unknown };
+  const code = typeof candidate.code === 'string' ? candidate.code : undefined;
+  const message = typeof candidate.message === 'string' ? candidate.message : '';
+  return (code !== undefined && TRANSIENT_NETWORK_CODES.has(code))
+    || /(?:timed? ?out|timeout|ECONNRESET|EAI_AGAIN|ENETUNREACH)/iu.test(message);
+}
+
+/** Retry only transport failures; assertion and HTTP contract failures remain fatal. */
+export async function retryTransientUpstream<T>(
+  label: string,
+  run: () => Promise<T>,
+  maxAttempts = 2,
+  delayMs = 250,
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await run();
+    } catch (error) {
+      if (!isTransientNetworkError(error) || attempt === maxAttempts) throw error;
+      console.warn(`[live] ${label}: transient upstream transport failure; retrying once`);
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw new Error(`${label} exhausted retry attempts.`);
+}
 
 export async function tolerateUpstreamRefusal(
   label: string,

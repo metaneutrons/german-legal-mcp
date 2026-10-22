@@ -62,7 +62,7 @@ export function assertInputBudget(
         }
         for (const entry of candidate) visit(entry, depth + 1);
       } else {
-        const prototype = Object.getPrototypeOf(candidate);
+        const prototype = Object.getPrototypeOf(candidate) as object | null;
         if (prototype !== Object.prototype && prototype !== null) {
           throw new InputBudgetError('arguments must be plain JSON objects');
         }

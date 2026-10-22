@@ -17,9 +17,9 @@ import { IcuConverter } from './converter.js';
 import { classifyIcuError } from './errors.js';
 import { safeAxiosGet, safeAxiosPost } from '../../shared/network-policy.js';
 import { isoDateLiteral, sparqlStringLiteral } from '../../shared/sparql.js';
+import { fetchCellarText } from '../../shared/cellar.js';
 import {
   ICU_DOCUMENT_POLICY,
-  ICU_EURLEX_POLICY,
   ICU_SEARCH_POLICY,
   ICU_SPARQL_POLICY,
 } from './network-policy.js';
@@ -61,21 +61,6 @@ interface SparqlResponse {
 }
 
 const SPARQL_URL = 'https://publications.europa.eu/webapi/rdf/sparql';
-const EURLEX_HTML = 'https://eur-lex.europa.eu/legal-content';
-
-/**
- * EUR-Lex answers 200 either way, so the language a document actually came
- * back in has to be read off the response — and there is no header for it.
- * `Content-Language` is empty on every Cellar and EUR-Lex response checked,
- * the redirect target is an opaque UUID, and `lang` appears on some documents
- * and not others.
- *
- * What does separate them is the page itself: a document is served as bare
- * document HTML, while "not available in this language" is answered with the
- * full EUR-Lex site page, navigation chrome and all. This id belongs to that
- * chrome and appears in no document.
- */
-const EURLEX_CHROME_MARKER = 'op-header-language';
 
 /**
  * Below this, the response was not a decision.
@@ -254,36 +239,25 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
     // what makes the answer's language knowable at all.
     const wanted = language.toUpperCase();
     for (const lang of wanted === 'EN' ? ['EN'] : [wanted, 'EN']) {
-      const markdown = await this.fetchEurLexHtml(celex, lang);
+      const markdown = await this.fetchCellarText(celex, lang);
       if (markdown) return { markdown, language: lang.toLowerCase() };
     }
     return undefined;
   }
 
-  private async fetchEurLexHtml(celex: string, language: string): Promise<string | undefined> {
+  /**
+   * Cellar, not eur-lex.europa.eu: the website answers clients without a
+   * browser with an AWS WAF challenge. Cellar answers a language it does not
+   * hold with 404, so the language that comes back is the one asked for.
+   */
+  private async fetchCellarText(celex: string, language: string): Promise<string | undefined> {
     try {
-      const response = await safeAxiosGet<string>(
-        this.http,
-        `${EURLEX_HTML}/${language}/TXT/HTML/`,
-        ICU_EURLEX_POLICY,
-        {
-          params: { uri: `CELEX:${celex}` },
-          headers: { 'Accept': 'text/html, application/xhtml+xml' },
-          maxRedirects: 5,
-          timeout: 30_000,
-          maxContentLength: 25 * 1024 * 1024,
-          responseType: 'text',
-        },
-      );
-      // Site chrome means EUR-Lex answered "not in this language" rather than
-      // with the document, at HTTP 200.
-      if (typeof response.data !== 'string' || response.data.includes(EURLEX_CHROME_MARKER)) {
-        return undefined;
-      }
-      const markdown = this.cellarConverter.convert(response.data);
+      const text = await fetchCellarText(this.http, celex, language, { timeout: 30_000 });
+      if (text.kind !== 'document') return undefined;
+      const markdown = this.cellarConverter.convert(text.html);
       return markdown.trim().length >= PUBLISHED_TEXT_MIN_CHARS ? markdown : undefined;
     } catch {
-      // A language or a document EUR-Lex does not hold is ordinary here.
+      // A language or a document Cellar does not hold is ordinary here.
       return undefined;
     }
   }

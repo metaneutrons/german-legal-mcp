@@ -1,6 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
-import { Provider, ToolDefinition, ToolResult } from '../../shared/types.js';
+import type { Provider, ToolDefinition, ToolResult } from '../../shared/types.js';
 import { rootLogger } from '../../shared/logger.js';
 import { IcuConverter } from './converter.js';
 import { validateConversion } from '../../shared/converter.js';

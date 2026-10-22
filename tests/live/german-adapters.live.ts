@@ -12,6 +12,7 @@ import {
 import {
   liveEnabled,
   reportLiveContract,
+  retryTransientUpstream,
   verifyDocument,
   verifySearchAndGet,
   verifyTableOfContents,
@@ -40,7 +41,7 @@ afterAll(() => {
 describe.skipIf(!LIVE)('German case-law adapters against live sources', () => {
   for (const source of caseLaw.sources) {
     it(`${source}: search → normalized reference → document`, async () => {
-      const { reference, document } = await verifySearchAndGet(caseLaw, {
+      const runContract = () => verifySearchAndGet(caseLaw, {
         query: CASE_LAW_QUERIES[source] ?? 'Datenschutz',
         sourceIds: [`de-case-law:${source}`],
         resourceTypes: ['case-law'],
@@ -52,6 +53,9 @@ describe.skipIf(!LIVE)('German case-law adapters against live sources', () => {
         jurisdiction: source === 'BUND' ? 'DE' : `DE-${source}`,
         minimumContentLength: 80,
       });
+      const { reference, document } = source === 'BUND'
+        ? await retryTransientUpstream(`${source} case-law`, runContract)
+        : await runContract();
 
       expect(reference.resourceType).toBe('case-law');
       expect(document.reference.resourceType).toBe('case-law');
@@ -77,12 +81,15 @@ describe.skipIf(!LIVE)('German legislation adapters against live sources', () =>
         jurisdiction: `DE-${source}`,
         minimumContentLength: 80,
       };
-      const { reference } = await verifySearchAndGet(legislation, {
+      const runContract = () => verifySearchAndGet(legislation, {
         query: LEGISLATION_QUERIES[source] ?? 'Datenschutz',
         sourceIds: [`de-legislation:${source}`],
         resourceTypes: ['legislation'],
         limit: 1,
       }, expected);
+      const { reference } = source === 'BUND'
+        ? await retryTransientUpstream(`${source} legislation`, runContract)
+        : await runContract();
 
       verifyTableOfContents(await legislation.getTableOfContents(reference));
     });
@@ -90,7 +97,10 @@ describe.skipIf(!LIVE)('German legislation adapters against live sources', () =>
 
   it('BUND: direct section retrieval and native law TOC', async () => {
     const sectionReference = federalReference('bgb/823', 'BGB § 823');
-    const document = await legislation.get(sectionReference);
+    const document = await retryTransientUpstream(
+      'BUND direct legislation',
+      () => legislation.get(sectionReference),
+    );
     verifyDocument(document, {
       providerId: 'de-legislation',
       sourceId: 'de-legislation:BUND',
@@ -105,9 +115,10 @@ describe.skipIf(!LIVE)('German legislation adapters against live sources', () =>
       contentLength: document.content.value.length,
     });
 
-    verifyTableOfContents(
-      await legislation.getTableOfContents(federalReference('bgb', 'Bürgerliches Gesetzbuch')),
-    );
+    verifyTableOfContents(await retryTransientUpstream(
+      'BUND legislation table of contents',
+      () => legislation.getTableOfContents(federalReference('bgb', 'Bürgerliches Gesetzbuch')),
+    ));
   });
 });
 

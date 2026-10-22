@@ -83,6 +83,8 @@ export class BremenAdapter implements LegisAdapter {
     $('h1 br, h2 br, h3 br, h4 br, h5 br').replaceWith(' ');
 
     const md = turndown.turndown(content.html() || '');
-    return { title, content: md, url: resp.request?.res?.responseUrl || url };
+    const responseUrl = (resp.request as { res?: { responseUrl?: unknown } } | undefined)
+      ?.res?.responseUrl;
+    return { title, content: md, url: typeof responseUrl === 'string' ? responseUrl : url };
   }
 }

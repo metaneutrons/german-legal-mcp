@@ -65,7 +65,7 @@ export async function giiGetLegislation(law: string, section: string): Promise<G
 
     const lawTitle = $('.jnheader h1')
       .contents()
-      .filter(function () { return this.type === 'text'; })
+      .filter(function () { return String(this.type) === 'text'; })
       .text()
       .trim();
     const sectionLabel = $('.jnenbez').text().trim();

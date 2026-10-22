@@ -35,17 +35,12 @@ async function isRegularFile(path) {
   }
 }
 
-function requirePublicVersionProjections(packageJson, packageLock, publicManifest) {
+function requirePublicVersionProjections(packageJson, publicManifest) {
   const version = packageJson.version;
   if (typeof version !== 'string' || !semverPattern.test(version)) {
     throw new Error(`package.json version ${String(version)} is not valid semantic versioning.`);
   }
-  requireEqual(packageLock.version, version, 'package-lock.json');
-  requireEqual(packageLock.packages?.['']?.version, version, 'package-lock.json packages[""]');
   requireEqual(publicManifest.version, version, 'manifest.json');
-  if (packageLock.name !== packageJson.name || packageLock.packages?.['']?.name !== packageJson.name) {
-    throw new Error('package-lock.json root package identity does not match package.json.');
-  }
   return { stableCore: version.split('-', 1)[0].split('+', 1)[0], version };
 }
 
@@ -108,14 +103,12 @@ async function verifyPrivateVersionProjections(resolvedRoot, version, stableCore
 /** Verify every shipped version projection against package.json, the sole SSOT. */
 export async function verifyVersionSsot(workspaceRoot = root) {
   const resolvedRoot = resolve(workspaceRoot);
-  const [packageJson, packageLock, publicManifest] = await Promise.all([
+  const [packageJson, publicManifest] = await Promise.all([
     readJson(resolve(resolvedRoot, 'package.json')),
-    readJson(resolve(resolvedRoot, 'package-lock.json')),
     readJson(resolve(resolvedRoot, 'manifest.json')),
   ]);
   const { version, stableCore } = requirePublicVersionProjections(
     packageJson,
-    packageLock,
     publicManifest,
   );
   await verifyPrivateVersionProjections(resolvedRoot, version, stableCore);

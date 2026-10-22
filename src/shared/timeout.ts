@@ -28,7 +28,7 @@ export async function withTimeout<T>(
 ): Promise<T> {
   let timer: ReturnType<typeof globalThis.setTimeout> | undefined;
   const timeoutPromise = new Promise<never>((_, reject) => {
-    // eslint-disable-next-line no-undef
+
     timer = setTimeout(() => {
       reject(new TimeoutError(operation, timeoutMs));
     }, timeoutMs);
@@ -39,7 +39,7 @@ export async function withTimeout<T>(
     return await Promise.race([promise, timeoutPromise]);
   } finally {
     if (timer) {
-      // eslint-disable-next-line no-undef
+
       clearTimeout(timer);
     }
   }

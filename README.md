@@ -284,7 +284,7 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | Tool | Description |
 |------|-------------|
 | `eul_search` | Search EU legislation via SPARQL. Filter by type (directive, regulation, decision, treaty). |
-| `eul_get_document` | Retrieve EU legislation by CELEX number (e.g., "32016R0679" for GDPR). Supports `section` (Art. 5, Artikel 5-10, headings, line ranges) and `save_path`. |
+| `eul_get_document` | Retrieve EU legislation by CELEX number from the EU Publications Office (Cellar): "32016R0679" for the Official Journal text, "02016R0679" for the latest consolidated version, "02016R0679-20160504" for a specific one. Supports `section` (Art. 5, Artikel 5-10, Anhang III, Kapitel III, Kapitel III Abschnitt 2, headings, line ranges) and `save_path`. |
 
 ### DIP Bundestag
 

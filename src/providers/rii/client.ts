@@ -191,7 +191,7 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
       ...(Object.keys(totals).length > 0 ? { totals } : {}),
       ...(unpaged.length > 0 ? { unpaged } : {}),
       failures: settled.flatMap((result, index) => result.status === 'rejected'
-        ? [{ source: sources[index] ?? 'unknown', error: result.reason }]
+        ? [{ source: sources[index] ?? 'unknown', error: result.reason as unknown }]
         : []),
     };
   }
@@ -241,7 +241,10 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
       return { results: [], failures: [], origin: 'native' };
     }
     const requested = this.resolveSources(request.sourceIds, request.jurisdictions) ?? this.sources;
-    const enumerable = requested.filter((source) => this.adapterBySource.get(source)?.enumerate);
+    const enumerable = requested.filter((source) => {
+      const adapter = this.adapterBySource.get(source);
+      return typeof adapter?.enumerate === 'function';
+    });
     const resumed = request.cursor ? decodeCursor(request.cursor) : undefined;
     if (request.cursor && !resumed) {
       throw new Error('Malformed enumeration cursor.');
@@ -271,7 +274,7 @@ implements LegalDataProvider<CaseLawReference>, CorpusEnumerationCapability<Case
       const next = page.nextCursor
         ? encodeCursor({ source, cursor: page.nextCursor })
         : enumerable[index + 1] !== undefined
-          ? encodeCursor({ source: enumerable[index + 1] as string })
+          ? encodeCursor({ source: enumerable[index + 1]! })
           : undefined;
       // An exhausted source that yielded nothing must not end the walk while
       // later sources are still untouched.

@@ -6,6 +6,7 @@
 /src/
 /.github/
 /.husky/
+/lefthook.yml
 /.vscode/
 /.kiro/
 /scripts/
@@ -25,9 +26,11 @@
 /.npmignore
 /.public-export.json
 /.editorconfig
+/.nvmrc
 /.gitattributes
 /Dockerfile
 /CHANGELOG.md
+/CONTRIBUTING.md
 /INSTALL-PRIVATE.md
 /SECURITY.md
 /blueprint.md
@@ -44,6 +47,7 @@ node_modules/**/*.d.cts
 node_modules/**/*.d.mts
 node_modules/**/*.map
 node_modules/.package-lock.json
+node_modules/.pnpm/lock.yaml
 node_modules/**/docs/
 node_modules/**/.github/
 node_modules/**/example/
@@ -64,8 +68,10 @@ node_modules/**/*.spec.cjs
 node_modules/**/*.spec.mjs
 node_modules/**/*.spec.ts
 
-# --- Lockfiles (npm; also excluded by mcpb pack defaults) ---
+# --- Lockfiles (also excluded by mcpb pack defaults) ---
 /package-lock.json
+/pnpm-lock.yaml
+/pnpm-workspace.yaml
 
 # --- Pack-time sources (copied over the shipped files at pack time); drop them ---
 /manifest.private.json

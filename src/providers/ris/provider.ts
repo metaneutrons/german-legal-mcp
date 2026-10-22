@@ -1,4 +1,4 @@
-import { Provider, ToolDefinition, ToolResult } from '../../shared/types.js';
+import type { Provider, ToolDefinition, ToolResult } from '../../shared/types.js';
 import { rootLogger } from '../../shared/logger.js';
 import { validateConversion } from '../../shared/converter.js';
 import { extractSection } from '../../shared/extract-section.js';

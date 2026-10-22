@@ -246,19 +246,31 @@ describe('IcuDataClient Cellar fast path', () => {
   // What Cellar actually returns for an order published only as an OJ notice —
   // 427 characters live, of which none are the decision.
   const ojNotice = '<html><body><p>Amtsblatt der Europäischen Union C/2026/361 Beschluss des Gerichts</p></body></html>';
-  // EUR-Lex answers "not in this language" with its whole site page, at 200.
-  const interstitial = `<html lang="en"><body><div id="op-header-language">Select your language</div><p>${'EUR-Lex CELEX chrome. '.repeat(200)}</p></body></html>`;
   const english = `<html><body><p>${'JUDGMENT OF THE GENERAL COURT (Third Chamber). '.repeat(60)}</p></body></html>`;
+  const MANIFESTATION = 'publications.europa.eu/resource/cellar/c93f72bb-c749-11ea-adf7-01aa75ed71a1';
+  const LANGS: Record<string, string> = { deu: 'DE', eng: 'EN' };
 
+  /**
+   * Cellar as observed: the CELEX resource answers 303 to a manifestation in
+   * the Accept-Language, or 404 when the document lacks that language. A
+   * string in `byLang` is the manifestation's body, 'challenge' an AWS WAF
+   * interstitial, and an Error or a missing entry a 404.
+   */
   function transport(byLang: Record<string, string | Error>) {
     return {
-      get: vi.fn(async (url: string) => {
-        const lang = url.match(/legal-content\/([A-Z]{2})\//)?.[1];
-        if (lang) {
+      get: vi.fn(async (url: string, config?: { headers?: Record<string, string> }) => {
+        if (url.includes('/resource/celex/')) {
+          const lang = LANGS[config?.headers?.['Accept-Language'] ?? ''] ?? '';
           const answer = byLang[lang];
-          if (answer === undefined) throw new Error('404');
-          if (answer instanceof Error) throw answer;
-          return { data: answer };
+          if (answer === undefined || answer instanceof Error) return { status: 404, headers: {}, data: '' };
+          if (answer === 'challenge') {
+            return { status: 202, headers: { 'x-amzn-waf-action': 'challenge' }, data: '' };
+          }
+          return { status: 303, headers: { location: `http://${MANIFESTATION}.000${lang === 'DE' ? 4 : 5}.05/DOC_1` }, data: '' };
+        }
+        const manifestation = /\.000(\d)\.05\/DOC_1$/.exec(url)?.[1];
+        if (manifestation) {
+          return { status: 200, headers: {}, data: byLang[manifestation === '4' ? 'DE' : 'EN'] };
         }
         return { data: '<P><A NAME="point1">1</A> InfoCuria-Text mit genügend Inhalt.</P>' };
       }),
@@ -274,7 +286,18 @@ describe('IcuDataClient Cellar fast path', () => {
 
     expect(doc.content.value).toContain('Vorabentscheidung');
     expect(t.post).not.toHaveBeenCalled();
-    expect(t.get).toHaveBeenCalledTimes(1);
+    // The CELEX resource and its 303 target, both on Cellar over HTTPS.
+    expect(t.get.mock.calls.map(([url]) => url)).toEqual([
+      'https://publications.europa.eu/resource/celex/62017CJ0476',
+      `https://${MANIFESTATION}.0004.05/DOC_1`,
+    ]);
+  });
+
+  it('never takes a bot challenge for the decision and falls back instead', async () => {
+    const t = transport({ DE: 'challenge', EN: 'challenge' });
+    const doc = await new IcuDataClient(t).get(celexRef('62017CJ0476'));
+    expect(doc.content.value).toContain('InfoCuria-Text');
+    expect(doc.content.value).not.toContain('awsWaf');
   });
 
   it('falls back to InfoCuria when Cellar has only the OJ notice', async () => {
@@ -298,13 +321,13 @@ describe('IcuDataClient Cellar fast path', () => {
     const t = transport({ DE: judgment });
     const doc = await new IcuDataClient(t).get(celexRef('id_123'));
     expect(doc.content.value).toContain('InfoCuria-Text');
-    expect(t.get).not.toHaveBeenCalledWith(expect.stringContaining('legal-content'), expect.anything());
+    expect(t.get).not.toHaveBeenCalledWith(expect.stringContaining('/resource/celex/'), expect.anything());
   });
 
   it('falls back to English and says so when German is not published', async () => {
     // The Court translates every case title but not every case text, so a
     // reference enumerated from a German title can still be English-only.
-    const t = transport({ DE: interstitial, EN: english });
+    const t = transport({ EN: english });
     const doc = await new IcuDataClient(t).get(celexRef('62021TJ0127'));
 
     expect(doc.content.value).toContain('JUDGMENT OF THE GENERAL COURT');

@@ -75,10 +75,11 @@ export class NetworkError extends RecoverableError {
  */
 export function formatToolCallError(error: unknown): string {
   const wrapped = error instanceof BaseError ? error : wrapAxiosError(error);
+  const replacer = (_key: string, value: unknown): unknown => (
+    typeof value === 'string' ? sanitizeLogText(value) : value
+  );
   return wrapped
-    ? JSON.stringify(wrapped.toJSON(), (_key, value) => (
-      typeof value === 'string' ? sanitizeLogText(value) : value
-    ), 2)
+    ? JSON.stringify(wrapped.toJSON(), replacer, 2)
     : `Error: ${sanitizeLogText(error instanceof Error ? error.message : String(error))}`;
 }
 

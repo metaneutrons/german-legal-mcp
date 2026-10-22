@@ -58,6 +58,13 @@ export interface SafeRequestOptions {
   readonly resolver?: HostResolver;
   /** Explicit opt-in for trusted bulk APIs; never allowed above 64 MiB. */
   readonly maxRequestBytes?: number;
+  /**
+   * Map a redirect target before it is validated, e.g. to upgrade an upstream's
+   * known `http:` Location to the same resource over HTTPS. The returned URL
+   * still crosses the full scheme/host/path/DNS check, so a rewrite can never
+   * widen the policy.
+   */
+  readonly rewriteRedirect?: (location: URL) => string;
 }
 
 /** Reject path/query syntax when a tool argument is meant to be an opaque id. */
@@ -160,7 +167,14 @@ export async function assertResolvedUrlAllowed(
 }
 
 function locationHeader(response: AxiosResponse<unknown>): string | undefined {
-  const location = response.headers?.location;
+  const headers = response.headers as unknown as {
+    get?: (name: string) => unknown;
+    location?: unknown;
+  } | undefined;
+  const getHeader = headers?.get;
+  const location = typeof getHeader === 'function'
+    ? Reflect.apply(getHeader, headers, ['location'])
+    : headers?.location;
   return typeof location === 'string' ? location : undefined;
 }
 
@@ -356,8 +370,9 @@ export async function safeAxiosGet<T>(
     const location = locationHeader(response);
     if (redirectStatus(response.status) && location) {
       if (hop === limit) throw new Error(`${policy.name} network policy redirect limit exceeded.`);
+      const target = new URL(location, current.url);
       const next = await validateRequestUrl(
-        new URL(location, current.url).toString(),
+        options.rewriteRedirect ? options.rewriteRedirect(target) : target.toString(),
         policy,
         resolveDns,
         resolver,

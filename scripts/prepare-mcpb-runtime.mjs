@@ -14,7 +14,7 @@ if (typeof binEntry !== 'string' || binEntry.length === 0) {
 
 // The MCPB already contains a production-only node_modules tree. Do not ship
 // build/test hooks or development dependency declarations that are impossible
-// to satisfy inside the final archive and make `npm sbom` reject that tree.
+// to satisfy inside the final archive.
 delete packageJson.devDependencies;
 delete packageJson['lint-staged'];
 packageJson.scripts = { start: `node ${binEntry}` };

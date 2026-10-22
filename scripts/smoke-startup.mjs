@@ -2,7 +2,7 @@
 /**
  * Startup smoke test for the published entrypoint. Validates that the built
  * package.json's declared binary actually loads and runs — catching broken
- * imports, a config module that throws, or a packaging mistake that `npm run
+ * imports, a config module that throws, or a packaging mistake that `pnpm run
  * build` alone would not surface. Four checks:
  *
  *   1. `--version` prints the package version and exits 0 (entrypoint + config
@@ -15,7 +15,7 @@
  *      MCP server startup, which is the actual risk this mode introduces: the
  *      branch that decides "CLI or server" must never guess wrong.
  *
- * Runs as part of `npm run verify`, after the package contents are checked.
+ * Runs as part of `pnpm run verify`, after the package contents are checked.
  */
 import { spawn } from 'node:child_process';
 import { readFileSync, mkdtempSync } from 'node:fs';
