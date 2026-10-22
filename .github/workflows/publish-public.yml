@@ -95,7 +95,7 @@ jobs:
           mkdir "$stage"
           git archive HEAD | tar -x -C "$stage"
           cp -R dist "$stage/dist"
-          (cd "$stage" && pnpm install --prod --frozen-lockfile --ignore-scripts)
+          (cd "$stage" && pnpm install --prod --frozen-lockfile --ignore-scripts --config.node-linker=hoisted)
           node "$stage/scripts/prepare-mcpb-runtime.mjs" "$stage"
 
       - name: Verify production-only public MCPB tree
