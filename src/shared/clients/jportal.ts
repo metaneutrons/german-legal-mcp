@@ -146,7 +146,9 @@ async function withRetry<T>(state: string, fn: (session: JPortalSession) => Prom
   try {
     return await fn(session);
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.data?.msgId === 'security_notAuthenticated') {
+    const responseData: unknown = axios.isAxiosError(error) ? error.response?.data : undefined;
+    if (responseData !== null && typeof responseData === 'object' && 'msgId' in responseData
+      && responseData.msgId === 'security_notAuthenticated') {
       logger.info('Session expired, re-initializing', { state });
       sessions.delete(state);
       session = await getSession(state);

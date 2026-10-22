@@ -27,7 +27,8 @@ td.addRule('note', {
 // Section labels (clause numbers) in headings — keep inline
 td.addRule('label', {
   filter: (node) => node.nodeName === 'SPAN' && (node.getAttribute('class') || '').includes('tr--label')
-    && !!(node.parentNode && (node.parentNode as HTMLElement).tagName?.match(/^H[1-6]$/i)),
+    && !!(node.parentNode
+      && (node.parentNode as { tagName?: string }).tagName?.match(/^H[1-6]$/i)),
   replacement: (content) => `${content.trim()} `,
 });
 

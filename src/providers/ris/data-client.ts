@@ -132,7 +132,7 @@ export class RisDataClient implements
         ? [{
             sourceId: `ris:${tasks[index]?.court ?? tasks[index]?.application ?? 'unknown'}`,
             message: entry.reason instanceof Error ? entry.reason.message : String(entry.reason),
-            cause: entry.reason,
+            cause: entry.reason as unknown,
           }]
         : []),
     };

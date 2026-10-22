@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "german-legal-mcp",
   "display_name": "German Legal MCP",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "German, Austrian and EU legal research: legislation, case law, parliamentary materials, preprints and standards — one MCP server; public sources need no subscription credentials.",
   "icon": "icon.png",
   "author": {
@@ -89,7 +89,7 @@
     },
     {
       "name": "eul_get_document",
-      "description": "Retrieve EU legislation from EUR-Lex by CELEX number (e.g., \"32016R0679\" for GDPR, \"32001L0029\" for InfoSoc). Returns full text in Markdown. Use `section` for partial content: \"Art. 5\", \"Artikel 5\", or \"lines:100-200\". `save_path` is for export only — when the user wants the document as a file to keep or process elsewhere."
+      "description": "Retrieve EU legislation by CELEX number (e.g., \"32016R0679\" for GDPR, \"32024R1689\" for the AI Act) from the EU Publications Office (Cellar). A CELEX beginning with the sector digit (3…) returns the act as published in the Official Journal, without later amendments. For the consolidated text use the leading 0 instead: \"02024R1689\" returns the latest consolidated version in force, \"02024R1689-20240712\" a specific one; consolidated texts are documentation, not the binding text. Returns full text in Markdown. Use `section` for partial content: \"Art. 5\", \"Artikel 5-10\", \"Anhang III\", \"Kapitel III\", \"Kapitel III Abschnitt 2\", or \"lines:100-200\". `save_path` is for export only — when the user wants the document as a file to keep or process elsewhere."
     },
     {
       "name": "icu_search",

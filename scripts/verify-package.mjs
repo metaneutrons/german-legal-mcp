@@ -6,6 +6,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  readdir,
   rm,
   writeFile,
 } from 'node:fs/promises';
@@ -15,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm';
 const temporaryRoot = await mkdtemp(join(tmpdir(), 'glmcp-package-verify-'));
 
 function parseArguments(arguments_) {
@@ -161,24 +162,17 @@ try {
       throw new Error('Supplied npm tarball must be a non-empty regular, non-symlink file.');
     }
   } else {
-    const packOutput = run(npm, [
+    run(pnpm, [
       'pack',
-      '--json',
-      '--ignore-scripts',
       '--pack-destination',
       temporaryRoot,
-    ], { cwd: root }, 'npm pack');
-
-    let report;
-    try {
-      report = JSON.parse(packOutput)[0];
-    } catch {
-      throw new Error(`Could not parse npm pack output:\n${packOutput}`);
+    ], { cwd: root }, 'pnpm pack');
+    const packed = (await readdir(temporaryRoot))
+      .filter((entry) => entry.endsWith('.tgz'));
+    if (packed.length !== 1) {
+      throw new Error(`pnpm pack produced ${packed.length} tarballs; expected exactly one.`);
     }
-    if (!report?.filename) {
-      throw new Error('npm pack did not return an artifact filename.');
-    }
-    tarball = join(temporaryRoot, report.filename);
+    tarball = join(temporaryRoot, packed[0]);
   }
 
   const files = inspectTarball(tarball);
@@ -216,12 +210,10 @@ try {
   await mkdir(consumer);
   await copyFile(consumerPackagePath, join(consumer, 'package.json'));
 
-  run(npm, [
-    'install',
+  run(pnpm, [
+    'add',
     '--ignore-scripts',
-    '--omit=dev',
-    '--no-audit',
-    '--no-fund',
+    '--config.manage-package-manager-versions=false',
     tarball,
   ], { cwd: consumer }, 'clean tarball installation');
 

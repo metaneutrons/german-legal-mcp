@@ -15,7 +15,7 @@ export class IcuConverter {
         node.nodeName === 'A' &&
         (node.getAttribute('name') || '').startsWith('point'),
       replacement: (_content, node) => {
-        const name = (node as HTMLElement).getAttribute('name') || '';
+        const name = (node as { getAttribute(name: string): string | null }).getAttribute('name') || '';
         const num = name.replace('point', '');
         return `\n\n[Rn. ${num}]{.rn} `;
       },

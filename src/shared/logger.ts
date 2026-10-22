@@ -379,6 +379,11 @@ function getLogger(): pino.Logger {
     },
   ];
   const transport = pino.transport({ targets });
+  // Test suites and short-lived CLI invocations may remove an isolated state
+  // directory while the worker still has a queued log line. Consume the
+  // transport error so an asynchronous ENOENT cannot become an uncaught
+  // process exception; the next process creates a fresh private log sink.
+  transport.on('error', () => undefined);
   logger = pino({ level, redact: LOG_REDACT_CONFIG }, transport);
   return logger;
 }

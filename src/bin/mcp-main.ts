@@ -5,6 +5,9 @@ import { rootLogger, sanitizeLogText } from '../shared/logger.js';
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 
 export async function runMcpProcess(): Promise<void> {
+  // Runtime creation remains after signal handlers are installed so startup
+  // failures use the same fatal-path cleanup as connection failures.
+  // eslint-disable-next-line prefer-const
   let runtime: ServerRuntime | undefined;
   let shuttingDown = false;
 

@@ -122,13 +122,13 @@ export function redactCataloguedEnvironment(
   variables: readonly EnvironmentVariable[],
   env: Environment = getEnvironment(),
 ): Record<string, string> {
-  const exact = variables.flatMap((entry) => {
+  const exact: Array<readonly [string, string]> = variables.flatMap((entry) => {
     if (entry.pattern) return [];
     const value = readStringEnv(entry.name, env);
     if (value === undefined) return [];
     return [[entry.name, entry.secret ? '[REDACTED]' : value]];
   });
-  const dynamic = variables.flatMap((entry) => {
+  const dynamic: Array<readonly [string, string]> = variables.flatMap((entry) => {
     if (!entry.pattern) return [];
     return Object.entries(env).flatMap(([name, rawValue]) => {
       if (!entry.pattern?.test(name)) return [];
@@ -137,7 +137,9 @@ export function redactCataloguedEnvironment(
       return [[name, entry.secret ? '[REDACTED]' : value]];
     });
   });
-  return Object.fromEntries([...exact, ...dynamic]);
+  const redacted: Record<string, string> = {};
+  for (const [name, value] of [...exact, ...dynamic]) redacted[name] = value;
+  return redacted;
 }
 
 export function collectConfiguration<T extends Record<string, unknown>>(

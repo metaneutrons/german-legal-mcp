@@ -10,6 +10,7 @@ import { PROVIDER_MANIFEST } from './provider-manifest.js';
 import { ProviderRegistry } from './provider-registry.js';
 import { formatToolCallError } from './shared/errors.js';
 import { rootLogger } from './shared/logger.js';
+import { budgetedTransport } from './shared/budgeted-transport.js';
 import {
   DEFAULT_TOOL_CALL_LIMITS,
   ToolCallCancelledError,
@@ -109,7 +110,7 @@ export async function createServerRuntime(
     server,
     registry,
     async connectStdio() {
-      await server.connect(new StdioServerTransport());
+      await server.connect(budgetedTransport(new StdioServerTransport()));
       const active = registry.getProviders();
       rootLogger.info(
         `Active providers (${active.length}): ${active.map((provider) => provider.name).join(', ') || 'none'}`,

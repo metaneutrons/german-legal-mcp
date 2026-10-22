@@ -23,11 +23,3 @@ export const ICU_SPARQL_POLICY: NetworkPolicy = {
     paths: [/^\/webapi\/rdf\/sparql$/],
   }],
 };
-
-export const ICU_EURLEX_POLICY: NetworkPolicy = {
-  name: 'EUR-Lex case law',
-  rules: [{
-    hostname: 'eur-lex.europa.eu',
-    paths: [/^\/legal-content\/[A-Z]{2}\/TXT\/HTML\/$/],
-  }],
-};

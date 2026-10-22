@@ -43,6 +43,7 @@ debug_type.ts
 coverage/
 
 # Test fixtures backup (contains copyrighted content)
-tests/fixtures.backup/
+fixtures.backup/
 
-.kiro/settings/mcp.json
+# Local MCP configuration may contain credentials; examples use mcp.example.json.
+mcp.json

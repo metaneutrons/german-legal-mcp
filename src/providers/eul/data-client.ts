@@ -15,18 +15,30 @@ import type {
 import { EulConverter } from './converter.js';
 import { safeAxiosGet } from '../../shared/network-policy.js';
 import { isoDateLiteral, sparqlStringLiteral } from '../../shared/sparql.js';
-import {
-  CELEX_PATTERN,
-  EUL_DOCUMENT_POLICY,
-  EUL_SPARQL_POLICY,
-} from './network-policy.js';
+import { CELLAR_LANGUAGES, fetchCellarText } from '../../shared/cellar.js';
+import { EulBotChallengeError, EulDocumentNotFoundError } from './errors.js';
+import { CELEX_PATTERN, EUL_SPARQL_POLICY } from './network-policy.js';
 
-const EURLEX_HTML = 'https://eur-lex.europa.eu/legal-content';
 const SPARQL_URL = 'https://publications.europa.eu/webapi/rdf/sparql';
 
-const LANG_MAP: Record<string, string> = {
-  DE: 'DEU', EN: 'ENG', FR: 'FRA', IT: 'ITA', ES: 'SPA', NL: 'NLD', PT: 'POR', PL: 'POL',
-};
+const LANG_MAP = CELLAR_LANGUAGES;
+
+/** A consolidated-text CELEX without its `-YYYYMMDD` version suffix. */
+const UNDATED_CONSOLIDATED_CELEX = /^0[0-9]{4}[A-Z][0-9]{4}$/i;
+const CONSOLIDATED_CELEX = /^0[0-9]{4}[A-Z][0-9]{4}-([0-9]{4})([0-9]{2})([0-9]{2})$/i;
+
+export interface EulLegislationText {
+  /** The CELEX actually served — for an undated consolidated request, the resolved version. */
+  readonly celex: string;
+  readonly language: string;
+  readonly markdown: string;
+  /** `official-journal` for the text as published, `consolidated` for a consolidated version. */
+  readonly version: 'official-journal' | 'consolidated';
+  /** ISO date of the consolidated version, when `version` is `consolidated`. */
+  readonly consolidationDate?: string;
+  /** Other consolidated versions known for the act, newest first (undated requests only). */
+  readonly otherVersions?: readonly string[];
+}
 
 const RESOURCE_TYPES: Record<string, string> = {
   directive: 'DIR', regulation: 'REG', decision: 'DEC', treaty: 'TREATY',
@@ -106,27 +118,84 @@ SELECT DISTINCT ?celex ?title WHERE {
   }
 
   async getLegislation(celex: string, language = 'DE'): Promise<string> {
+    return (await this.getLegislationText(celex, language)).markdown;
+  }
+
+  /**
+   * Full text from Cellar. A CELEX starting with `3` (or another sector
+   * digit) yields the act as published in the Official Journal; `0…-YYYYMMDD`
+   * yields that consolidated version, and a bare `0…` resolves to the latest
+   * consolidated version already in force.
+   */
+  async getLegislationText(celex: string, language = 'DE'): Promise<EulLegislationText> {
     if (!CELEX_PATTERN.test(celex)) throw new Error(`Invalid CELEX identifier: ${celex}`);
     const normalizedLanguage = language.toUpperCase();
-    if (!/^[A-Z]{2}$/.test(normalizedLanguage)) {
-      throw new Error(`Invalid EUR-Lex language: ${language}`);
+    const lang3 = LANG_MAP[normalizedLanguage];
+    if (!lang3) throw new Error(`Invalid EUR-Lex language: ${language}`);
+
+    let requested = celex.toUpperCase();
+    let otherVersions: string[] | undefined;
+    if (UNDATED_CONSOLIDATED_CELEX.test(requested)) {
+      const versions = await this.consolidatedVersions(requested);
+      const current = currentVersion(versions);
+      if (!current) throw new EulDocumentNotFoundError(requested, normalizedLanguage);
+      otherVersions = versions.filter((version) => version !== current);
+      requested = current;
     }
-    const response = await safeAxiosGet<string>(
-      this.http,
-      `${EURLEX_HTML}/${normalizedLanguage}/TXT/HTML/`,
-      EUL_DOCUMENT_POLICY,
-      {
-      params: { uri: `CELEX:${celex.toUpperCase()}` },
-      headers: {
-        'Accept': 'text/html, application/xhtml+xml',
-        'Accept-Language': `${normalizedLanguage.toLowerCase()}, en;q=0.8`,
-      },
-      timeout: 30_000,
-      maxContentLength: 25 * 1024 * 1024,
-      responseType: 'text',
-      },
-    );
-    return this.converter.convert(response.data);
+
+    const text = await fetchCellarText(this.http, requested, normalizedLanguage);
+    if (text.kind === 'challenge') throw new EulBotChallengeError(text.url);
+    if (text.kind === 'missing') throw new EulDocumentNotFoundError(requested, normalizedLanguage);
+
+    const consolidated = CONSOLIDATED_CELEX.exec(requested);
+    return {
+      celex: requested,
+      language: normalizedLanguage,
+      markdown: this.converter.convert(text.html),
+      version: consolidated ? 'consolidated' : 'official-journal',
+      ...(consolidated ? { consolidationDate: `${consolidated[1]}-${consolidated[2]}-${consolidated[3]}` } : {}),
+      ...(otherVersions ? { otherVersions } : {}),
+    };
+  }
+
+  /** Every consolidated version of one act, newest first. */
+  async consolidatedVersions(baseCelex: string): Promise<string[]> {
+    if (!UNDATED_CONSOLIDATED_CELEX.test(baseCelex)) {
+      throw new Error(`Not a consolidated CELEX base: ${baseCelex}`);
+    }
+    const base = baseCelex.toUpperCase();
+    // Indexed lookup through the consolidation relation of the published act
+    // (sector 3). It also returns consolidations of acts that this act amends,
+    // hence the prefix filter below.
+    const related = await this.sparqlCelexList(`PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+SELECT DISTINCT ?celex WHERE {
+  ?act cdm:resource_legal_id_celex ${sparqlStringLiteral(`3${base.slice(1)}`)}^^xsd:string .
+  ?consolidated cdm:act_consolidated_consolidates_resource_legal ?act .
+  ?consolidated cdm:resource_legal_id_celex ?celex .
+} LIMIT 1000`);
+    let versions = related.filter((celex) => celex.startsWith(`${base}-`));
+    if (versions.length === 0) {
+      // Acts outside sector 3 have no such link; a prefix scan finds them, slowly.
+      versions = (await this.sparqlCelexList(`PREFIX cdm: <http://publications.europa.eu/ontology/cdm#>
+SELECT DISTINCT ?celex WHERE {
+  ?work cdm:resource_legal_id_celex ?celex .
+  FILTER(STRSTARTS(STR(?celex), ${sparqlStringLiteral(`${base}-`)}))
+} LIMIT 200`)).filter((celex) => celex.startsWith(`${base}-`));
+    }
+    return [...new Set(versions.filter((value) => CONSOLIDATED_CELEX.test(value)))].sort().reverse();
+  }
+
+  private async sparqlCelexList(sparql: string): Promise<string[]> {
+    const response = await safeAxiosGet<SparqlResponse>(this.http, SPARQL_URL, EUL_SPARQL_POLICY, {
+      params: { query: sparql },
+      headers: { 'Accept': 'application/sparql-results+json' },
+      timeout: 60_000,
+      maxContentLength: 1024 * 1024,
+    });
+    return (response.data.results?.bindings ?? [])
+      .map((binding) => binding.celex?.value?.toUpperCase() ?? '')
+      .filter((value) => value.length > 0);
   }
 
   async search(request: LegalSearchRequest): Promise<LegalSearchPage<LegislationReference>> {
@@ -225,6 +294,16 @@ SELECT DISTINCT ?celex ?title ?date WHERE {
       },
     };
   }
+}
+
+/**
+ * The newest version already in force. Cellar also lists consolidations dated
+ * in the future (amendments applying later); those are not the current law.
+ */
+function currentVersion(versionsNewestFirst: readonly string[], today = new Date()): string | undefined {
+  const cutoff = today.toISOString().slice(0, 10).replaceAll('-', '');
+  return versionsNewestFirst.find((version) => (version.split('-')[1] ?? '') <= cutoff)
+    ?? versionsNewestFirst.at(-1);
 }
 
 function toReference(result: EulSearchResult): LegislationReference {

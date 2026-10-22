@@ -185,7 +185,9 @@ export class NRWAdapter implements LegisAdapter {
     const parts: string[] = [];
     paragraphs.each((_, el) => { parts.push($.html(el)); });
     const md = turndown.turndown(parts.join('\n'));
-    return { title, content: md, url: resp.request?.res?.responseUrl || url };
+    const responseUrl = (resp.request as { res?: { responseUrl?: unknown } } | undefined)
+      ?.res?.responseUrl;
+    return { title, content: md, url: typeof responseUrl === 'string' ? responseUrl : url };
   }
 
   async toc(_state: string, id: string): Promise<TocEntry[]> {
