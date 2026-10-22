@@ -235,9 +235,10 @@ jobs:
           node scripts/verify-release-assets.mjs \
             "$RELEASE_TAG" release-artifacts "$GITHUB_REPOSITORY"
 
-          pnpm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
+          # npm, not pnpm: npm's OIDC token exchange is the one the Trusted
+          # Publisher was verified against (pnpm's exchange returned 404).
+          npm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
             --ignore-scripts \
-            --no-git-checks \
             --access public \
             --provenance \
             --registry https://registry.npmjs.org
