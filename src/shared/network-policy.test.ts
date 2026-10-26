@@ -114,6 +114,85 @@ describe('network policy', () => {
     )).rejects.toThrow(/non-public address/);
   });
 
+  describe('private addresses permitted by a rule', () => {
+    const splitHorizon: NetworkPolicy = {
+      name: 'test-provider',
+      rules: [
+        { ...policy.rules[0]!, privateAddresses: ['192.168.2.20'] },
+        { hostname: 'other.example', paths: ['/health'] },
+      ],
+    };
+
+    it('accepts the exact address alongside public answers', async () => {
+      await expect(assertResolvedUrlAllowed(
+        'https://provider.example/health',
+        splitHorizon,
+        async () => [
+          { address: '192.168.2.20', family: 4 },
+          { address: '2a06:98c1:3120::3', family: 6 },
+        ],
+      )).resolves.toBeInstanceOf(URL);
+    });
+
+    it('still rejects any other non-public address', async () => {
+      await expect(assertResolvedUrlAllowed(
+        'https://provider.example/health',
+        splitHorizon,
+        async () => [{ address: '192.168.2.21', family: 4 }],
+      )).rejects.toThrow(/non-public address 192\.168\.2\.21/);
+    });
+
+    it('does not extend the exception to another host of the policy', async () => {
+      await expect(assertResolvedUrlAllowed(
+        'https://other.example/health',
+        splitHorizon,
+        async () => [{ address: '192.168.2.20', family: 4 }],
+      )).rejects.toThrow(/non-public address/);
+    });
+  });
+
+  describe('operator-private networks permitted by a rule', () => {
+    const operatorNetworks: NetworkPolicy = {
+      name: 'test-provider',
+      rules: [
+        { ...policy.rules[0]!, allowOperatorPrivateNetworks: true },
+        { hostname: 'other.example', paths: ['/health'] },
+      ],
+    };
+    const resolveTo = (address: string, family: number) => async () => [{ address, family }];
+
+    it.each([
+      ['192.168.2.5', 4], ['10.1.2.3', 4], ['172.20.0.4', 4], ['100.100.1.1', 4],
+      // An IPv4-mapped answer is the same address as its IPv4 form.
+      ['fd00::5', 6], ['::ffff:192.168.2.5', 6],
+    ])('accepts %s', async (address, family) => {
+      await expect(assertResolvedUrlAllowed(
+        'https://provider.example/health',
+        operatorNetworks,
+        resolveTo(address, family),
+      )).resolves.toBeInstanceOf(URL);
+    });
+
+    it.each([
+      ['127.0.0.1', 4], ['169.254.169.254', 4], ['0.0.0.0', 4], ['198.18.0.1', 4],
+      ['224.0.0.1', 4], ['::1', 6], ['fe80::1', 6], ['::ffff:127.0.0.1', 6],
+    ])('still rejects %s', async (address, family) => {
+      await expect(assertResolvedUrlAllowed(
+        'https://provider.example/health',
+        operatorNetworks,
+        resolveTo(address, family),
+      )).rejects.toThrow(/non-public address/);
+    });
+
+    it('does not extend the exception to another host of the policy', async () => {
+      await expect(assertResolvedUrlAllowed(
+        'https://other.example/health',
+        operatorNetworks,
+        resolveTo('192.168.2.5', 4),
+      )).rejects.toThrow(/non-public address/);
+    });
+  });
+
   it('rejects an allowlisted hostname when DNS resolves to cloud link-local metadata', async () => {
     await expect(assertResolvedUrlAllowed(
       'https://provider.example/documents/A_1.html',

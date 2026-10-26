@@ -219,6 +219,7 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | `GLMCP_STATE_DIR` | Platform default | Root directory for logs, sessions, caches, metrics, daemon sockets and locks. |
 | `GLMCP_EXPORT_DIR` | `<GLMCP_STATE_DIR>/exports` | Exclusive root for files written through `save_path`; existing files and symlinked parents are refused. |
 | `GLMCP_LOG_LEVEL` | `info` | Structured log level. |
+| `GLMCP_UPDATE_CHECK` | `true` | Check for a newer release (at most every 12 hours) and tell the client: in the MCP instructions at startup, after the first tool call and in the `*_status` tools. The private build asks the firm's PostgreSQL cache, the public build the npm registry. Set `false` to turn it off. |
 | `GLMCP_LEGIS_ENABLED` | `true` | Bundes- & Landesrecht |
 | `GLMCP_RII_ENABLED` | `true` | Rechtsprechung im Internet |
 | `GLMCP_RIS_ENABLED` | `true` | RIS Austria (federal law + case law) |

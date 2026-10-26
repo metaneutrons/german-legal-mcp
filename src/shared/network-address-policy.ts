@@ -135,6 +135,24 @@ export function normalizedIpLiteral(hostname: string): string {
     : hostname;
 }
 
+// Networks an operator's own service can live in: RFC 1918, shared address
+// space (CGNAT, e.g. Tailscale) and IPv6 unique-local. Loopback, link-local
+// (cloud metadata) and every other reserved range are not part of it.
+const operatorPrivateNetworks = new BlockList();
+operatorPrivateNetworks.addSubnet('10.0.0.0', 8, 'ipv4');
+operatorPrivateNetworks.addSubnet('100.64.0.0', 10, 'ipv4');
+operatorPrivateNetworks.addSubnet('172.16.0.0', 12, 'ipv4');
+operatorPrivateNetworks.addSubnet('192.168.0.0', 16, 'ipv4');
+operatorPrivateNetworks.addSubnet('fc00::', 7, 'ipv6');
+
+export function isOperatorPrivateAddress(address: string): boolean {
+  const normalized = normalizedIpLiteral(address);
+  const family = isIP(normalized);
+  if (family === 4) return operatorPrivateNetworks.check(normalized, 'ipv4');
+  if (family === 6) return operatorPrivateNetworks.check(normalized, 'ipv6');
+  return false;
+}
+
 export function isBlockedAddress(address: string): boolean {
   const normalized = normalizedIpLiteral(address);
   const family = isIP(normalized);

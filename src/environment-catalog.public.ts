@@ -4,6 +4,7 @@ export const PUBLIC_ENVIRONMENT_VARIABLES: readonly EnvironmentVariable[] = [
   { name: 'GLMCP_STATE_DIR', description: 'Application state root directory.' },
   { name: 'GLMCP_EXPORT_DIR', description: 'Exclusive root directory for user-requested document exports.' },
   { name: 'GLMCP_LOG_LEVEL', description: 'Structured log level.', defaultValue: 'info' },
+  { name: 'GLMCP_UPDATE_CHECK', description: 'Check for a newer release and tell the client about it.', defaultValue: 'true' },
   { name: 'GLMCP_ARXIV_ENABLED', description: 'Enable the arXiv provider.', defaultValue: 'true' },
   { name: 'GLMCP_DIP_API_KEY', description: 'DIP API key.', secret: true },
   { name: 'GLMCP_DIP_ENABLED', description: 'Enable the DIP provider.', defaultValue: 'true' },
