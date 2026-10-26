@@ -1,6 +1,9 @@
 import type { ServerRuntime } from '../server.js';
 import { createServerRuntime } from '../server.js';
 import { rootLogger, sanitizeLogText } from '../shared/logger.js';
+import { getPackageMetadata } from '../package-metadata.js';
+import { isUpdateCheckEnabled, UpdateChecker } from '../update-check.js';
+import { releaseSource } from '../update-source.js';
 
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 
@@ -38,6 +41,21 @@ export async function runMcpProcess(): Promise<void> {
   process.once('SIGTERM', () => { void cleanup('SIGTERM').finally(() => { process.exitCode = 0; }); });
   process.stdin.once('close', () => { void cleanup('stdin close'); });
 
-  runtime = await createServerRuntime();
+  const updateChecker = createUpdateChecker();
+  runtime = await createServerRuntime(updateChecker ? { updateChecker } : {});
   await runtime.connectStdio();
+}
+
+function createUpdateChecker(): UpdateChecker | undefined {
+  try {
+    if (!isUpdateCheckEnabled()) return undefined;
+    const source = releaseSource();
+    if (!source) return undefined;
+    return new UpdateChecker({ source, currentVersion: getPackageMetadata().version });
+  } catch (error) {
+    rootLogger.warn('Release check disabled', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return undefined;
+  }
 }

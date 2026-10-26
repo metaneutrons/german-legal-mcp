@@ -8,6 +8,7 @@ import type {
 import { isIP } from 'node:net';
 import {
   isBlockedAddress,
+  isOperatorPrivateAddress,
   normalizedIpLiteral,
   systemHostResolver,
   type HostResolver,
@@ -16,6 +17,7 @@ import { withTimeout } from './timeout.js';
 
 export {
   isBlockedAddress,
+  isOperatorPrivateAddress,
   systemHostResolver,
   type HostResolver,
   type ResolvedAddress,
@@ -35,6 +37,20 @@ export type NetworkPath = string | RegExp;
 export interface NetworkRule {
   readonly hostname: string;
   readonly paths: readonly NetworkPath[];
+  /**
+   * Exact non-public addresses this host may resolve to, for an operator's own
+   * service behind split-horizon DNS. Every other non-public answer is still
+   * rejected; callers validate what they put here.
+   */
+  readonly privateAddresses?: readonly string[];
+  /**
+   * Accept any answer in an operator's private networks (RFC 1918, CGNAT,
+   * IPv6 unique-local) for this host. Only for a host the operator configured
+   * and reaches over HTTPS with certificate verification, where a resolver
+   * pointing the name elsewhere cannot present the host's certificate.
+   * Loopback, link-local and other reserved ranges stay rejected.
+   */
+  readonly allowOperatorPrivateNetworks?: boolean;
 }
 
 /**
@@ -117,6 +133,11 @@ function matchesPath(pathname: string, patterns: readonly NetworkPath[]): boolea
   });
 }
 
+function ruleFor(url: URL, policy: NetworkPolicy): NetworkRule | undefined {
+  const hostname = url.hostname.toLowerCase();
+  return policy.rules.find((candidate) => candidate.hostname.toLowerCase() === hostname);
+}
+
 /** Parse and synchronously enforce scheme, authority, origin and path rules. */
 export function assertUrlAllowed(rawUrl: string, policy: NetworkPolicy): URL {
   rejectEncodedTraversal(rawUrl, policy.name);
@@ -144,7 +165,7 @@ export function assertUrlAllowed(rawUrl: string, policy: NetworkPolicy): URL {
     throw new Error(`${policy.name} network policy rejected a local or literal-IP host.`);
   }
 
-  const rule = policy.rules.find((candidate) => candidate.hostname.toLowerCase() === hostname);
+  const rule = ruleFor(url, policy);
   if (!rule) {
     throw new Error(`${policy.name} network policy rejected host ${hostname}.`);
   }
@@ -270,12 +291,19 @@ async function resolvePublicAddresses(
   if (answers.length === 0) {
     throw new Error(`${policy.name} network policy could not resolve ${url.hostname}.`);
   }
+  const rule = ruleFor(url, policy);
+  const permittedPrivate = new Set(
+    (rule?.privateAddresses ?? []).map(normalizedIpLiteral),
+  );
+  const permitsOperatorNetworks = rule?.allowOperatorPrivateNetworks === true;
   return answers.map((answer) => {
     const address = normalizedIpLiteral(answer.address);
     const family = isIP(address);
     if ((family !== 4 && family !== 6)
       || family !== answer.family
-      || isBlockedAddress(address)) {
+      || (isBlockedAddress(address)
+        && !permittedPrivate.has(address)
+        && !(permitsOperatorNetworks && isOperatorPrivateAddress(address)))) {
       throw new Error(
         `${policy.name} network policy rejected non-public address ${answer.address} for ${url.hostname}.`,
       );

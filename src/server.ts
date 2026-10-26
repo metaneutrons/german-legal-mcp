@@ -19,6 +19,7 @@ import {
   type ToolCallGateLimits,
 } from './shared/tool-call-gate.js';
 import { withTimeout } from './shared/timeout.js';
+import type { UpdateChecker } from './update-check.js';
 
 const TOOL_CALL_DRAIN_TIMEOUT_MS = 5_000;
 
@@ -34,6 +35,12 @@ export interface CreateServerRuntimeOptions {
   version?: string;
   requestIdFactory?: () => string;
   toolCallLimits?: ToolCallGateLimits;
+  /**
+   * Tells the client about a newer release: in the MCP `instructions` from the
+   * last stored check, then after the first successful tool call and with
+   * every `*_status` result. Only the real server process passes one.
+   */
+  updateChecker?: UpdateChecker;
 }
 
 /** Explicit composition boundary; importing the package creates no runtime. */
@@ -49,10 +56,17 @@ export async function createServerRuntime(
     }
   });
 
+  const updateChecker = options.updateChecker;
+  const startupNotice = updateChecker?.notice();
   const server = new Server(
     { name: 'german-legal-mcp', version: options.version ?? getPackageMetadata().version },
-    { capabilities: { tools: {} } },
+    {
+      capabilities: { tools: {} },
+      ...(startupNotice ? { instructions: startupNotice } : {}),
+    },
   );
+  let updateNoticeDelivered = false;
+  void updateChecker?.refresh();
   const toolCallGate = new ToolCallGate(
     options.toolCallLimits ?? DEFAULT_TOOL_CALL_LIMITS,
   );
@@ -85,6 +99,14 @@ export async function createServerRuntime(
         durationMs: Date.now() - startedAt,
         isError: result.isError ?? false,
       });
+      const notice = result.isError ? undefined : updateChecker?.notice();
+      if (notice && (!updateNoticeDelivered || name.endsWith('_status'))) {
+        updateNoticeDelivered = true;
+        return {
+          content: [...result.content, { type: 'text' as const, text: notice }],
+          isError: result.isError,
+        };
+      }
       return { content: result.content, isError: result.isError };
     } catch (error) {
       if (error instanceof ToolCallCapacityError || error instanceof ToolCallCancelledError) {
