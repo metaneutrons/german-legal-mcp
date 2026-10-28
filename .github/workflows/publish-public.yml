@@ -213,6 +213,12 @@ jobs:
             release-artifacts/provenance.intoto.jsonl
             release-artifacts/SHA256SUMS
 
+      # Fails before any release state exists when npm refuses the OIDC token
+      # exchange (npm itself only logs that verbosely and then reports E404).
+      # Prints HTTP status and the registry's message, never a token.
+      - name: Preflight the npm OIDC token exchange
+        run: node scripts/verify-npm-oidc-exchange.mjs
+
       - name: Stage draft, publish exact tarball through OIDC, then promote
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -237,10 +243,13 @@ jobs:
 
           # npm, not pnpm: npm's OIDC token exchange is the one the Trusted
           # Publisher was verified against (pnpm's exchange returned 404).
+          # Verbose output adds npm's `oidc` lines, which name the exchange
+          # result but no token (npm/cli lib/utils/oidc.js).
           npm publish "$GITHUB_WORKSPACE/release-artifacts/$NPM_TARBALL" \
             --ignore-scripts \
             --access public \
             --provenance \
+            --loglevel verbose \
             --registry https://registry.npmjs.org
 
           node scripts/verify-published-package.mjs \
