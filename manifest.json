@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "german-legal-mcp",
   "display_name": "German Legal MCP",
-  "version": "4.1.1",
+  "version": "4.2.0",
   "description": "German, Austrian and EU legal research: legislation, case law, parliamentary materials, preprints and standards — one MCP server; public sources need no subscription credentials.",
   "icon": "icon.png",
   "author": {
@@ -51,7 +51,6 @@
         "GLMCP_DIP_API_KEY": "${user_config.dip_api_key}",
         "GLMCP_NAUTOS_TENANT_ID": "${user_config.nautos_tenant_id}",
         "GLMCP_NAUTOS_TENANT_KEY": "${user_config.nautos_tenant_key}",
-        "GLMCP_NAUTOS_ENTITLEMENT_ID": "${user_config.nautos_entitlement_id}",
         "GLMCP_NAUTOS_USERNAME": "${user_config.nautos_username}",
         "GLMCP_NAUTOS_PASSWORD": "${user_config.nautos_password}"
       }
@@ -180,12 +179,6 @@
       "title": "nautos Tenant Key",
       "description": "Optional — enables IP-based nautos.de authentication.",
       "sensitive": true,
-      "required": false
-    },
-    "nautos_entitlement_id": {
-      "type": "string",
-      "title": "nautos Entitlement Identity",
-      "description": "Optional stable non-secret licence label added to the tenant/account cache partition.",
       "required": false
     },
     "nautos_username": {

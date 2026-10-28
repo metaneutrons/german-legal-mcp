@@ -219,7 +219,7 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | `GLMCP_STATE_DIR` | Platform default | Root directory for logs, sessions, caches, metrics, daemon sockets and locks. |
 | `GLMCP_EXPORT_DIR` | `<GLMCP_STATE_DIR>/exports` | Exclusive root for files written through `save_path`; existing files and symlinked parents are refused. |
 | `GLMCP_LOG_LEVEL` | `info` | Structured log level. |
-| `GLMCP_UPDATE_CHECK` | `true` | Check for a newer release (at most every 12 hours) and tell the client: in the MCP instructions at startup, after the first tool call and in the `*_status` tools. The private build asks the firm's PostgreSQL cache, the public build the npm registry. Set `false` to turn it off. |
+| `GLMCP_UPDATE_CHECK` | `true` | Check for a newer release (at most every 12 hours) and tell the client: in the MCP instructions at startup, after the first tool call and in the `*_status` tools. It asks the npm registry for the `latest` release. Set `false` to turn it off. |
 | `GLMCP_LEGIS_ENABLED` | `true` | Bundes- & Landesrecht |
 | `GLMCP_RII_ENABLED` | `true` | Rechtsprechung im Internet |
 | `GLMCP_RIS_ENABLED` | `true` | RIS Austria (federal law + case law) |
@@ -239,10 +239,8 @@ or add your MCP client config (e.g., `claude_desktop_config.json`):
 | `GLMCP_NAUTOS_USERNAME` | For user-based | nautos.de account username |
 | `GLMCP_NAUTOS_PASSWORD` | For user-based | nautos.de account password |
 | `GLMCP_NAUTOS_TENANT_ID` | No | Tenant ID (auto-detected from login response) |
-| `GLMCP_NAUTOS_ENTITLEMENT_ID` | No | Optional stable, non-secret licence identity added to the tenant/account cache partition. Changing it intentionally creates a fresh cache identity. |
 
 **Authentication**: IP-based login is tried first (requires `GLMCP_NAUTOS_TENANT_KEY`). If it fails and credentials are set, user-based login is attempted as fallback.
-
 
 
 ## Tools

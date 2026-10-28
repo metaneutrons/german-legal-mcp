@@ -6,7 +6,6 @@ export interface NautosEntitlementIdentity {
   tenantKey?: string;
   tenantId?: string;
   username?: string;
-  entitlementId?: string;
 }
 
 /** Opaque partition for licensed Nautos full text; passwords are excluded. */
@@ -17,7 +16,9 @@ export function nautosEntitlementCacheScope(identity: NautosEntitlementIdentity)
       tenantKey: normalize(identity.tenantKey),
       tenantId: normalize(identity.tenantId),
       username: normalize(identity.username),
-      entitlementId: normalize(identity.entitlementId ?? ''),
+      // Preserve the v1 default-scope digest after retiring the configurable
+      // override; this constant is not identity input.
+      entitlementId: '',
     }))
     .digest('hex')
     .slice(0, 24);

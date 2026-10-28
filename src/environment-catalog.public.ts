@@ -16,7 +16,6 @@ export const PUBLIC_ENVIRONMENT_VARIABLES: readonly EnvironmentVariable[] = [
   { name: 'GLMCP_NAUTOS_ENABLED', description: 'Enable the Nautos provider.' },
   { name: 'GLMCP_NAUTOS_TENANT_KEY', description: 'Nautos tenant key.', secret: true },
   { name: 'GLMCP_NAUTOS_TENANT_ID', description: 'Nautos tenant ID.' },
-  { name: 'GLMCP_NAUTOS_ENTITLEMENT_ID', description: 'Stable non-secret Nautos licence identity used for cache partitioning.' },
   { name: 'GLMCP_NAUTOS_USERNAME', description: 'Nautos username.', secret: true },
   { name: 'GLMCP_NAUTOS_PASSWORD', description: 'Nautos password.', secret: true },
 ] as const;

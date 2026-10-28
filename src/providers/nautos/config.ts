@@ -14,7 +14,6 @@ export const nautosConfig = {
   tenantId: readStringEnv('GLMCP_NAUTOS_TENANT_ID') ?? '',
   username,
   password,
-  entitlementId: readStringEnv('GLMCP_NAUTOS_ENTITLEMENT_ID') ?? '',
   enabled: explicitEnabled !== undefined
     ? readBooleanEnv('GLMCP_NAUTOS_ENABLED', false)
     : (hasIpAuth || hasUserAuth),
