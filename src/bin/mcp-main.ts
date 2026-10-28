@@ -42,7 +42,9 @@ export async function runMcpProcess(): Promise<void> {
   process.stdin.once('close', () => { void cleanup('stdin close'); });
 
   const updateChecker = createUpdateChecker();
-  runtime = await createServerRuntime(updateChecker ? { updateChecker } : {});
+  runtime = await createServerRuntime({
+    ...(updateChecker ? { updateChecker } : {}),
+  });
   await runtime.connectStdio();
 }
 

@@ -203,4 +203,20 @@ describe('MCP server update notice', () => {
     await runtime.shutdown();
     await client.close();
   });
+
+  it('sends operator instructions to the model at startup', async () => {
+    const runtime = await createServerRuntime({
+      manifest: manifestFor(provider),
+      operatorInstructions: ['Tell the user that Redis is deprecated.'],
+    });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'operator-notice-test', version: '1.0.0' });
+    await runtime.server.connect(serverTransport);
+    await client.connect(clientTransport);
+
+    expect(client.getInstructions()).toBe('Tell the user that Redis is deprecated.');
+
+    await runtime.shutdown();
+    await client.close();
+  });
 });

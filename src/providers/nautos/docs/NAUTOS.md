@@ -504,7 +504,7 @@ No special pandoc spans (`[Rn. 5]{.rn}`, `[S. 110]{.page}`) are needed. Converte
 - **Two-phase document retrieval** — outline first (TOC + metadata), then sections on demand (matches existing project pattern).
 - **Auth chain is 5 steps** — cache the `xSHISecurity` JWT (valid ~3h) to avoid repeating the full chain for every request.
 - **Identity-scoped caching** — cache document data beneath an opaque scope
-  derived from tenant, account and optional `GLMCP_NAUTOS_ENTITLEMENT_ID`.
+  derived from tenant and account data.
   Pre-4.0 unbound entries are never read as current.
 - **Content conversion** — Cheerio + Turndown, as in the other HTML-sourced providers. The semantic CSS classes map cleanly to Markdown headings, lists, paragraphs.
 
@@ -528,7 +528,6 @@ Cache strategy: store `xSHISecurity` per `din21Id`, refresh when expired (check 
 | `GLMCP_NAUTOS_TENANT_ID` | No | Tenant ID, detected from authentication when available. |
 | `GLMCP_NAUTOS_USERNAME` | For user access | Account username. |
 | `GLMCP_NAUTOS_PASSWORD` | With username | Account password; secret. |
-| `GLMCP_NAUTOS_ENTITLEMENT_ID` | No | Stable non-secret licence identity added to the cache partition. |
 
 For IP-based access, the JWT is obtained automatically through the configured
 tenant. User credentials are the fallback. Cached licensed content is bound to

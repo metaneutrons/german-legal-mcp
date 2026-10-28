@@ -41,6 +41,8 @@ export interface CreateServerRuntimeOptions {
    * every `*_status` result. Only the real server process passes one.
    */
   updateChecker?: UpdateChecker;
+  /** Operator notices that the model must act on, such as a deprecated cache configuration. */
+  operatorInstructions?: readonly string[];
 }
 
 /** Explicit composition boundary; importing the package creates no runtime. */
@@ -57,7 +59,10 @@ export async function createServerRuntime(
   });
 
   const updateChecker = options.updateChecker;
-  const startupNotice = updateChecker?.notice();
+  const startupNotice = [
+    ...(options.operatorInstructions ?? []),
+    updateChecker?.notice(),
+  ].filter((notice): notice is string => !!notice).join('\n\n');
   const server = new Server(
     { name: 'german-legal-mcp', version: options.version ?? getPackageMetadata().version },
     {
