@@ -1,6 +1,6 @@
 {
   "name": "@metaneutrons/german-legal-mcp",
-  "version": "4.2.0",
+  "version": "4.2.1",
   "packageManager": "pnpm@12.3.4",
   "description": "MCP server and typed components for German, Austrian and EU legal research",
   "main": "dist/index.js",
@@ -128,7 +128,7 @@
   "devDependencies": {
     "@anthropic-ai/mcpb": "2.1.2",
     "@eslint/js": "^10.0.1",
-    "@types/node": "^24.13.3",
+    "@types/node": "^26.6.6",
     "@types/turndown": "^5.0.6",
     "lefthook": "^2.2.2",
     "@vitest/coverage-v8": "^4.1.11",
