@@ -10,10 +10,10 @@ function delay(milliseconds) {
   return new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds));
 }
 
-function packageMetadataUrl(registry, packageName, version) {
+function packageMetadataUrl(registry, packageName) {
   const base = registry.endsWith('/') ? registry : `${registry}/`;
   const escapedName = packageName.replace('/', '%2f');
-  return new URL(`${escapedName}/${encodeURIComponent(version)}`, base).href;
+  return new URL(escapedName, base).href;
 }
 
 function requestHeaders(token) {
@@ -25,7 +25,7 @@ function requestHeaders(token) {
 
 async function lookupTarballUrl({ fetchImpl, packageJson, registry, token }) {
   const response = await fetchImpl(
-    packageMetadataUrl(registry, packageJson.name, packageJson.version),
+    packageMetadataUrl(registry, packageJson.name),
     { headers: requestHeaders(token) },
   );
   if (response.status === 404) return undefined;
@@ -33,7 +33,12 @@ async function lookupTarballUrl({ fetchImpl, packageJson, registry, token }) {
     throw new Error(`Published package metadata returned HTTP ${response.status}.`);
   }
   const metadata = await response.json();
-  const remoteUrl = metadata?.dist?.tarball;
+  if (!metadata?.versions || typeof metadata.versions !== 'object') {
+    throw new Error('Registry did not return a versions map.');
+  }
+  const versionMetadata = metadata.versions[packageJson.version];
+  if (versionMetadata === undefined) return undefined;
+  const remoteUrl = versionMetadata?.dist?.tarball;
   if (typeof remoteUrl !== 'string') {
     throw new Error('Registry did not return a tarball URL.');
   }
