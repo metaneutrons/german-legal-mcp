@@ -50,6 +50,7 @@ function privateVersionPaths(resolvedRoot) {
     resolve(resolvedRoot, 'services/private-cache/docker-compose.yml'),
     resolve(resolvedRoot, 'services/private-cache/postgres/Dockerfile'),
     resolve(resolvedRoot, 'services/private-cache/sync/Dockerfile'),
+    resolve(resolvedRoot, 'services/private-cache/admin/Dockerfile'),
   ];
 }
 
@@ -60,7 +61,7 @@ function requireCompletePrivateTree(presence) {
   return presence.every(Boolean);
 }
 
-function requirePrivateImageProjections(compose, postgres, sync, stableCore) {
+function requirePrivateImageProjections(compose, postgres, sync, admin, stableCore) {
   requireSingleTag(
     compose,
     /^\s*image:\s*german-legal-mcp-private-cache-postgres:([^\s]+)\s*$/gm,
@@ -74,6 +75,12 @@ function requirePrivateImageProjections(compose, postgres, sync, stableCore) {
     'sync Compose image',
   );
   requireSingleTag(
+    compose,
+    /^\s*image:\s*german-legal-mcp-private-cache-admin:([^\s]+)\s*$/gm,
+    stableCore,
+    'admin Compose image',
+  );
+  requireSingleTag(
     postgres,
     /org\.opencontainers\.image\.version="([^"]+)"/g,
     stableCore,
@@ -85,19 +92,26 @@ function requirePrivateImageProjections(compose, postgres, sync, stableCore) {
     stableCore,
     'sync OCI label',
   );
+  requireSingleTag(
+    admin,
+    /org\.opencontainers\.image\.version="([^"]+)"/g,
+    stableCore,
+    'admin OCI label',
+  );
 }
 
 async function verifyPrivateVersionProjections(resolvedRoot, version, stableCore) {
   const paths = privateVersionPaths(resolvedRoot);
   if (!requireCompletePrivateTree(await Promise.all(paths.map(isRegularFile)))) return;
-  const [privateManifest, compose, postgres, sync] = await Promise.all([
+  const [privateManifest, compose, postgres, sync, admin] = await Promise.all([
     readJson(paths[0]),
     readFile(paths[1], 'utf8'),
     readFile(paths[2], 'utf8'),
     readFile(paths[3], 'utf8'),
+    readFile(paths[4], 'utf8'),
   ]);
   requireEqual(privateManifest.version, version, 'manifest.private.json');
-  requirePrivateImageProjections(compose, postgres, sync, stableCore);
+  requirePrivateImageProjections(compose, postgres, sync, admin, stableCore);
 }
 
 /** Verify every shipped version projection against package.json, the sole SSOT. */

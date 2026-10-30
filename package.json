@@ -1,6 +1,6 @@
 {
   "name": "@metaneutrons/german-legal-mcp",
-  "version": "4.2.1",
+  "version": "4.3.0",
   "packageManager": "pnpm@12.3.4",
   "description": "MCP server and typed components for German, Austrian and EU legal research",
   "main": "dist/index.js",

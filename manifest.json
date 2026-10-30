@@ -2,7 +2,7 @@
   "manifest_version": "0.3",
   "name": "german-legal-mcp",
   "display_name": "German Legal MCP",
-  "version": "4.2.1",
+  "version": "4.3.0",
   "description": "German, Austrian and EU legal research: legislation, case law, parliamentary materials, preprints and standards — one MCP server; public sources need no subscription credentials.",
   "icon": "icon.png",
   "author": {
