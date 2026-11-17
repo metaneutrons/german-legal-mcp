@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { lstat, readFile } from 'node:fs/promises';
+import { lstat, readFile, readdir } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -10,9 +10,9 @@ async function readJson(path) {
   return JSON.parse(await readFile(path, 'utf8'));
 }
 
-function requireEqual(actual, expected, location) {
+function requireEqual(actual, expected, location, source = 'package.json') {
   if (actual !== expected) {
-    throw new Error(`${location} version ${String(actual)} does not match package.json ${expected}.`);
+    throw new Error(`${location} version ${String(actual)} does not match ${source} ${expected}.`);
   }
 }
 
@@ -44,19 +44,21 @@ function requirePublicVersionProjections(packageJson, publicManifest) {
   return { stableCore: version.split('-', 1)[0].split('+', 1)[0], version };
 }
 
-function privateVersionPaths(resolvedRoot) {
+function privateCacheVersionPaths(resolvedRoot) {
   return [
-    resolve(resolvedRoot, 'manifest.private.json'),
+    resolve(resolvedRoot, 'services/private-cache/version.json'),
     resolve(resolvedRoot, 'services/private-cache/docker-compose.yml'),
     resolve(resolvedRoot, 'services/private-cache/postgres/Dockerfile'),
     resolve(resolvedRoot, 'services/private-cache/sync/Dockerfile'),
     resolve(resolvedRoot, 'services/private-cache/admin/Dockerfile'),
+    resolve(resolvedRoot, 'services/private-cache/sync/package.json'),
+    resolve(resolvedRoot, 'services/private-cache/admin/package.json'),
   ];
 }
 
-function requireCompletePrivateTree(presence) {
+function requireCompletePrivateCacheTree(presence) {
   if (presence.some(Boolean) && !presence.every(Boolean)) {
-    throw new Error('Private version projections are incomplete; refusing a mixed public/private tree.');
+    throw new Error('Private-cache version projections are incomplete; refusing a partial service tree.');
   }
   return presence.every(Boolean);
 }
@@ -64,19 +66,19 @@ function requireCompletePrivateTree(presence) {
 function requirePrivateImageProjections(compose, postgres, sync, admin, stableCore) {
   requireSingleTag(
     compose,
-    /^\s*image:\s*german-legal-mcp-private-cache-postgres:([^\s]+)\s*$/gm,
+    /^\s*image:\s*\$\{GLMCP_CACHE_POSTGRES_IMAGE:-german-legal-mcp-private-cache-postgres:([^\s}]+)\}\s*$/gm,
     stableCore,
     'PostgreSQL Compose image',
   );
   requireSingleTag(
     compose,
-    /^\s*image:\s*german-legal-mcp-private-cache-sync:([^\s]+)\s*$/gm,
+    /^\s*image:\s*\$\{GLMCP_CACHE_SYNC_IMAGE:-german-legal-mcp-private-cache-sync:([^\s}]+)\}\s*$/gm,
     stableCore,
     'sync Compose image',
   );
   requireSingleTag(
     compose,
-    /^\s*image:\s*german-legal-mcp-private-cache-admin:([^\s]+)\s*$/gm,
+    /^\s*image:\s*\$\{GLMCP_CACHE_ADMIN_IMAGE:-german-legal-mcp-private-cache-admin:([^\s}]+)\}\s*$/gm,
     stableCore,
     'admin Compose image',
   );
@@ -100,21 +102,52 @@ function requirePrivateImageProjections(compose, postgres, sync, admin, stableCo
   );
 }
 
-async function verifyPrivateVersionProjections(resolvedRoot, version, stableCore) {
-  const paths = privateVersionPaths(resolvedRoot);
-  if (!requireCompletePrivateTree(await Promise.all(paths.map(isRegularFile)))) return;
-  const [privateManifest, compose, postgres, sync, admin] = await Promise.all([
+async function verifyPrivateManifestProjection(resolvedRoot, version) {
+  const path = resolve(resolvedRoot, 'manifest.private.json');
+  if (!await isRegularFile(path)) return;
+  requireEqual((await readJson(path)).version, version, 'manifest.private.json');
+}
+
+async function requireSchemaProjection(resolvedRoot, expected) {
+  if (!Number.isSafeInteger(expected) || expected < 1) {
+    throw new Error(`services/private-cache/version.json schema ${String(expected)} is invalid.`);
+  }
+  const names = await readdir(resolve(resolvedRoot, 'services/private-cache/postgres/migrations'));
+  const migrations = names.flatMap((name) => {
+    const match = /^(\d{3})-[a-z0-9-]+[.]sql$/u.exec(name);
+    return match ? [Number(match[1])] : [];
+  });
+  const latest = Math.max(0, ...migrations);
+  if (latest !== expected) {
+    throw new Error(`Cache schema ${expected} does not match latest migration ${latest}.`);
+  }
+}
+
+async function verifyPrivateCacheVersionProjections(resolvedRoot) {
+  const paths = privateCacheVersionPaths(resolvedRoot);
+  if (!requireCompletePrivateCacheTree(await Promise.all(paths.map(isRegularFile)))) return null;
+  const [cacheMetadata, compose, postgres, sync, admin, syncPackage, adminPackage] = await Promise.all([
     readJson(paths[0]),
     readFile(paths[1], 'utf8'),
     readFile(paths[2], 'utf8'),
     readFile(paths[3], 'utf8'),
     readFile(paths[4], 'utf8'),
+    readJson(paths[5]),
+    readJson(paths[6]),
   ]);
-  requireEqual(privateManifest.version, version, 'manifest.private.json');
-  requirePrivateImageProjections(compose, postgres, sync, admin, stableCore);
+  const cacheVersion = cacheMetadata.version;
+  if (typeof cacheVersion !== 'string' || !semverPattern.test(cacheVersion)
+    || cacheVersion.includes('-') || cacheVersion.includes('+')) {
+    throw new Error(`services/private-cache/version.json version ${String(cacheVersion)} is not stable semantic versioning.`);
+  }
+  requireEqual(syncPackage.version, cacheVersion, 'sync package.json', 'cache version');
+  requireEqual(adminPackage.version, cacheVersion, 'admin package.json', 'cache version');
+  requirePrivateImageProjections(compose, postgres, sync, admin, cacheVersion);
+  await requireSchemaProjection(resolvedRoot, cacheMetadata.schema);
+  return { cacheSchema: cacheMetadata.schema, cacheVersion };
 }
 
-/** Verify every shipped version projection against package.json, the sole SSOT. */
+/** Verify MCP projections and the independently versioned private-cache stack. */
 export async function verifyVersionSsot(workspaceRoot = root) {
   const resolvedRoot = resolve(workspaceRoot);
   const [packageJson, publicManifest] = await Promise.all([
@@ -125,10 +158,13 @@ export async function verifyVersionSsot(workspaceRoot = root) {
     packageJson,
     publicManifest,
   );
-  await verifyPrivateVersionProjections(resolvedRoot, version, stableCore);
+  await verifyPrivateManifestProjection(resolvedRoot, version);
+  const cache = await verifyPrivateCacheVersionProjections(resolvedRoot);
 
-  process.stdout.write(`Version SSOT verified: ${version} (service core ${stableCore}).\n`);
-  return { version, stableCore };
+  process.stdout.write(cache
+    ? `Version SSOT verified: MCP ${version}; cache ${cache.cacheVersion}; schema ${cache.cacheSchema}.\n`
+    : `Version SSOT verified: MCP ${version}.\n`);
+  return { version, stableCore, ...(cache ?? {}) };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
