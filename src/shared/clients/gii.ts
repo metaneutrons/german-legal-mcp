@@ -12,7 +12,7 @@ const GII_POLICY: NetworkPolicy = {
   name: 'GII documents',
   rules: [{
     hostname: 'www.gesetze-im-internet.de',
-    paths: [/^\/[A-Za-z0-9._+-]+\/__[A-Za-z0-9ÄÖÜäöüß._%+-]+\.html$/],
+    paths: [/^\/[A-Za-z0-9._+-]+\/(?:__|art_)[A-Za-z0-9ÄÖÜäöüß._%+-]+\.html$/],
   }],
 };
 
@@ -45,9 +45,17 @@ export async function giiGetLegislation(law: string, section: string): Promise<G
   const lawLower = law.toLowerCase();
   const lawNorm = LAW_SLUG_ALIASES[lawLower] ?? lawLower;
 
+  // gesetze-im-internet.de names a section page "__<n>.html" for laws numbered
+  // by paragraph and "art_<n>.html" for laws numbered by article (GG, EGBGB).
+  // An "Art."/"Artikel" prefix in the request selects the article form.
   let sectionNorm = section.trim();
-  sectionNorm = sectionNorm.replace(/^(§|Paragraph|Para\.?|Art\.?)\s*/i, '');
-  if (!sectionNorm.startsWith('__')) {
+  const isArticle = /^Art(?:ikel|\.)?(?=\s|\d|$)/i.test(sectionNorm);
+  if (!/^(?:__|art_)/i.test(sectionNorm)) {
+    sectionNorm = sectionNorm.replace(/^(§|Paragraph|Para\.?|Artikel|Art\.?)\s*/i, '');
+  }
+  if (isArticle && !sectionNorm.startsWith('art_')) {
+    sectionNorm = 'art_' + sectionNorm;
+  } else if (!isArticle && !sectionNorm.startsWith('__') && !sectionNorm.startsWith('art_')) {
     sectionNorm = '__' + sectionNorm;
   }
 
@@ -72,8 +80,8 @@ export async function giiGetLegislation(law: string, section: string): Promise<G
     const sectionTitle = $('.jnentitel').text().trim();
     const contentHtml = $('.jnhtml').html() || '';
     const content = turndown.turndown(contentHtml);
-    const prevHref = $('a[href*="__"][title*="vorherigen"]').attr('href');
-    const nextHref = $('a[href*="__"][title*="nachfolgenden"]').attr('href');
+    const prevHref = $('a[href*="__"][title*="vorherigen"], a[href*="art_"][title*="vorherigen"]').first().attr('href');
+    const nextHref = $('a[href*="__"][title*="nachfolgenden"], a[href*="art_"][title*="nachfolgenden"]').first().attr('href');
 
     return {
       title: `${lawTitle}\n${sectionLabel} ${sectionTitle}`,

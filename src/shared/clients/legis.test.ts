@@ -63,15 +63,50 @@ describe('giiGetLegislation', () => {
     );
   });
 
-  it('should strip Art. prefix from section', async () => {
+  it('maps an Art. prefix to the art_ page form', async () => {
     const giiGetLegislation = await getGii();
     mockGet.mockResolvedValueOnce({ data: Buffer.from('<html><body><div class="jnhtml"></div></body></html>', 'latin1') } as any);
 
     await giiGetLegislation('GG', 'Art. 1');
     expect(mockGet).toHaveBeenCalledWith(
-      'https://www.gesetze-im-internet.de/gg/__1.html',
+      'https://www.gesetze-im-internet.de/gg/art_1.html',
       expect.any(Object),
     );
+  });
+
+  it.each([
+    ['GG', 'Art. 94', 'gg/art_94.html'],
+    ['GG', 'Art 94', 'gg/art_94.html'],
+    ['GG', 'Art.94', 'gg/art_94.html'],
+    ['GG', 'Artikel 94', 'gg/art_94.html'],
+    ['BGBEG', 'Art. 229', 'bgbeg/art_229.html'],
+    ['GG', 'art_94', 'gg/art_94.html'],
+    ['BGB', '§ 823', 'bgb/__823.html'],
+  ])('builds the page name for %s %s', async (law, section, path) => {
+    const giiGetLegislation = await getGii();
+    mockGet.mockResolvedValueOnce({ data: Buffer.from('<html><body><div class="jnhtml"></div></body></html>', 'latin1') } as any);
+
+    await giiGetLegislation(law, section);
+    expect(mockGet).toHaveBeenCalledWith(
+      `https://www.gesetze-im-internet.de/${path}`,
+      expect.any(Object),
+    );
+  });
+
+  it('reads previous and next links of an article page', async () => {
+    const giiGetLegislation = await getGii();
+    mockGet.mockResolvedValueOnce({
+      data: Buffer.from(
+        '<html><body><div class="jnhtml"><p>x</p></div>' +
+        '<a href="art_93.html" title="Zur vorherigen Norm">v</a>' +
+        '<a href="art_95.html" title="Zur nachfolgenden Norm">n</a></body></html>',
+        'latin1',
+      ),
+    } as any);
+
+    const result = await giiGetLegislation('GG', 'Art. 94');
+    expect(result.prev).toBe('art_93.html');
+    expect(result.next).toBe('art_95.html');
   });
 
   it('should throw on 404', async () => {
